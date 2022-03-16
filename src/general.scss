@@ -1,0 +1,14 @@
+body,
+html,
+#viewDiv {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#viewDiv {
+  canvas {
+    filter: saturate(1.5);
+  }
+}
