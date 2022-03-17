@@ -6,7 +6,7 @@ John through Pro:
 
 JS API current state:
 
-<img width="809" alt="Screen Shot 2022-03-16 at 15 37 25" src="https://devtopia.esri.com/storage/user/847/files/7fcfc609-6ac0-46e0-9d73-2d5a0b0ed6ff">
+![Screen Shot 2022-03-17 at 23 55 28](https://devtopia.esri.com/storage/user/847/files/ddf2c17d-7771-4f42-b4e8-143a173e1fe4)
 
 
 # Dev
