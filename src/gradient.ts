@@ -10,7 +10,7 @@ export function makeGradient(stops: Stop[]): ImageData {
 
   for (const {
     offset,
-    color: [r, g, b],
+    color: [r, g, b]
   } of stops) {
     gradient.addColorStop(offset, `rgb(${r}, ${g}, ${b})`);
   }
@@ -21,23 +21,24 @@ export function makeGradient(stops: Stop[]): ImageData {
   return ctx.getImageData(0, 0, 1, height);
 }
 
-export function makeGradientSampler(
-  stops: Stop[]
-): (value: number) => number[] {
+export function makeGradientSampler(stops: Stop[]): (value: number) => number[] {
+  const colors = stops.map(({ color }) => (typeof color === "string" ? hexToRGB(color) : color));
+
   return (value) => {
     for (let i = 0; i < stops.length; i++) {
       const stop = stops[i];
+      const color = colors[i];
 
       if (value <= stop.offset) {
         if (i === 0) {
-          return stops[0].color;
+          return colors[0];
         }
 
         const prev = stops[i - 1];
         const f = (value - prev.offset) / (stop.offset - prev.offset);
 
-        const c1 = prev.color;
-        const c2 = stop.color;
+        const c1 = colors[i - 1];
+        const c2 = color;
 
         const ret = [0, 0, 0];
 
@@ -49,11 +50,15 @@ export function makeGradientSampler(
       }
     }
 
-    return stops[stops.length - 1].color;
+    return colors[colors.length - 1];
   };
+}
+
+function hexToRGB(color: string): number[] {
+  return [parseInt(color.slice(1, 3), 16), parseInt(color.slice(3, 5), 16), parseInt(color.slice(5, 7), 16)];
 }
 
 interface Stop {
   offset: number;
-  color: number[];
+  color: number[] | string;
 }

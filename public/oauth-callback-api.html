@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script>
+      function loadHandler() {
+        if (opener) {
+          if (location.hash) {
+            opener.setOAuthResponseHash(location.hash);
+            close();
+          }
+        } else {
+          close();
+        }
+      }
+    </script>
+  </head>
+  <body onload="loadHandler();"></body>
+</html>

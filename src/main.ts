@@ -19,6 +19,21 @@ import { CachedElevationLayer } from "./CachedElevationLayer";
 import { makeGradient, makeGradientSampler } from "./gradient";
 import { createExtrudedBox, extrudeToZ } from "./meshUtils";
 import SolidEdges3D from "@arcgis/core/symbols/edges/SolidEdges3D";
+import ImageryLayer from "@arcgis/core/layers/ImageryLayer";
+import IdentityManager from "@arcgis/core/identity/IdentityManager";
+import OAuthInfo from "@arcgis/core/identity/OAuthInfo";
+
+IdentityManager.registerOAuthInfos([
+  new OAuthInfo({
+    appId: "RKNJfdy3Vn6nlmKm",
+    popup: true,
+    popupCallbackUrl: `${document.location.origin}${document.location.pathname}oauth-callback-api.html`
+  })
+]);
+
+(window as any).setOAuthResponseHash = (responseHash: string) => {
+  IdentityManager.setOAuthResponseHash(responseHash);
+};
 
 const noise = new SimplexNoise(() => 12);
 const area = new Extent({
@@ -99,7 +114,7 @@ async function run() {
   const scaleZ = (value: number) =>
     ((value - zmin) * zExaggeration + zmin - (zmax - zmin) * zExaggeration * 1.3) / scale;
 
-  const meshResolution = 1600;
+  const meshResolution = 400;
   const mesh = await createFromElevation(sampler, area, { demResolution: meshResolution });
 
   const zmin = mesh.extent.zmin;
@@ -129,10 +144,13 @@ async function createTerrainSurface(mesh: Mesh, context: Context): Promise<void>
   }
 
   mesh.vertexAttributesChanged();
+  const texture = await createTerrainColorTexture(context);
   mesh.components[0].material = new MeshMaterialMetallicRoughness({
-    colorTexture: new MeshTexture({ data: createTerrainColorTexture(context) }),
+    color: [0, 0, 0],
+    emissiveTexture: new MeshTexture({ data: texture }),
+    emissiveColor: [255, 255, 255],
     metallic: 0,
-    roughness: 0.8
+    roughness: 1
   });
 
   view.graphics.add(
@@ -141,7 +159,8 @@ async function createTerrainSurface(mesh: Mesh, context: Context): Promise<void>
       symbol: new MeshSymbol3D({
         symbolLayers: [
           new FillSymbol3DLayer({
-            material: { color: "white " }
+            material: { color: "white " },
+            edges: new SolidEdges3D({ color: [160, 30, 30, 0.8], size: "1px" })
           })
         ]
       })
@@ -149,23 +168,36 @@ async function createTerrainSurface(mesh: Mesh, context: Context): Promise<void>
   );
 }
 
-function createTerrainColorTexture({ width, height, sampler, zmin, zmax }: Context): ImageData {
+async function createTerrainColorTexture({ width, height, sampler, zmin, zmax }: Context): Promise<ImageData> {
   const pt = new Point({ x: 0, y: 0, spatialReference: SpatialReference.WebMercator });
 
   const gradientSampler = makeGradientSampler([
-    { offset: 0, color: [0, 14, 113] },
-    { offset: 0.35, color: [0, 14, 180] },
-    { offset: 0.65, color: [248, 131, 158] },
-    { offset: 0.85, color: [255, 213, 163] }
+    { offset: 0, color: "#000004" },
+    { offset: 0.1, color: "#140e36" },
+    { offset: 0.2, color: "#3b0f70" },
+    { offset: 0.3, color: "#641a80" },
+    { offset: 0.4, color: "#8c2981" },
+    { offset: 0.5, color: "#b5367a" },
+    { offset: 0.6, color: "#de4968" },
+    { offset: 0.7, color: "#f66e5c" },
+    { offset: 0.8, color: "#fe9f6d" },
+    { offset: 0.9, color: "#fecf92" },
+    { offset: 1, color: "#fecf92" }
   ]);
 
-  const imageData = new ImageData(width, height);
+  const r = height / width;
+  const res = 1024;
+
+  const textureWidth = res;
+  const textureHeight = Math.ceil(res * r);
+
+  const imageData = new ImageData(textureWidth, textureHeight);
   let ptr = 0;
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      pt.x = area.xmin + (x / width) * area.width;
-      pt.y = area.ymin + (y / height) * area.height;
+  for (let y = 0; y < textureHeight; y++) {
+    for (let x = 0; x < textureWidth; x++) {
+      pt.x = area.xmin + (x / textureWidth) * area.width;
+      pt.y = area.ymin + (y / textureHeight) * area.height;
 
       const z = (sampler.queryElevation(pt) as Point).z;
       const f = (z - zmin) / (zmax - zmin);
@@ -179,7 +211,28 @@ function createTerrainColorTexture({ width, height, sampler, zmin, zmax }: Conte
     }
   }
 
-  return imageData;
+  const hillshade = new ImageryLayer({ portalItem: { id: "1a914d579fba422585270ac1b927357f" } });
+  await hillshade.load();
+  const image = await hillshade.fetchImage(area, textureWidth, textureHeight, { requestAsImageElement: true } as any);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = textureWidth;
+  canvas.height = textureHeight;
+
+  const ctx = canvas.getContext("2d")!;
+  ctx.putImageData(imageData, 0, 0);
+  ctx.filter = "saturate(1.5)";
+  ctx.drawImage(canvas, 0, 0);
+
+  ctx.globalCompositeOperation = "soft-light";
+
+  ctx.save();
+  ctx.translate(0, textureHeight);
+  ctx.scale(1, -1);
+  ctx.drawImage(image.imageElement, 0, 0);
+  ctx.restore();
+
+  return ctx.getImageData(0, 0, textureWidth, textureHeight);
 }
 
 function createWaterSurface({ zBottom }: Context): void {
@@ -217,7 +270,8 @@ function createWaterSurface({ zBottom }: Context): void {
         symbolLayers: [
           new WaterSymbol3DLayer({
             waterbodySize: "large",
-            waveStrength: "moderate"
+            waveStrength: "moderate",
+            color: [44, 127, 174]
           })
         ]
       })
