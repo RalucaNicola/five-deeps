@@ -1,5 +1,3 @@
-import Mesh from "@arcgis/core/geometry/Mesh";
-
 export function extrude(
   position: Float64Array,
   height: (x: number, y: number, z: number) => number
@@ -52,15 +50,15 @@ export function createExtrudedBox(
   width: number,
   height: number,
   evaluate: (out: number[], x: number, y: number) => void,
-  extrudeZ: number
+  extrudeZ: number | ((x: number, y: number, z: number) => number)
 ): { position: Float64Array; faces: Uint32Array; uv: Float32Array } {
   let writePtr = 0;
 
   const position = new Float64Array(((width + 1) * 2 + (height + 1) * 2 + 4) * 3);
   const out = [0, 0, 0];
 
-  let zmin = extrudeZ;
-  let zmax = extrudeZ;
+  let zmin = typeof extrudeZ === "number" ? extrudeZ : Number.POSITIVE_INFINITY;
+  let zmax = typeof extrudeZ === "number" ? extrudeZ : Number.NEGATIVE_INFINITY;
 
   const fillPosition = (xmin: number, xmax: number, ymin: number, ymax: number) => {
     let x = xmin;
@@ -94,7 +92,17 @@ export function createExtrudedBox(
   fillPosition(width, 0, height, height);
   fillPosition(0, 0, height, 0);
 
-  const extruded = extrudeToZ(position, extrudeZ);
+  const extruded = extrude(
+    position,
+    typeof extrudeZ === "number"
+      ? (_x, _y, z) => extrudeZ - z
+      : (x, y, z) => {
+          const ret = extrudeZ(x, y, z);
+          zmin = Math.min(zmin, ret + z);
+          zmax = Math.max(zmax, ret + z);
+          return ret;
+        }
+  );
   const numVertices = extruded.position.length / 3;
   const uv = new Float32Array(numVertices * 2);
 
