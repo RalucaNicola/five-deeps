@@ -5,7 +5,7 @@ import SceneView from "@arcgis/core/views/SceneView";
 import Map from "@arcgis/core/Map";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import { Configuration } from "./Configuration";
-import { DiaramaBuilder } from "./DiaramaBuilder";
+import { DioramaBuilder } from "./DioramaBuilder";
 
 @subclass("App")
 export class App extends Widget {
@@ -43,7 +43,7 @@ export class App extends Widget {
     viewingMode: "local"
   });
 
-  private diaramaBuilder = new DiaramaBuilder({ view: this.view, config: this.config });
+  private diaramaBuilder = new DioramaBuilder({ view: this.view, config: this.config });
 
   render() {
     return <div id="viewDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreate(node)}></div>;

@@ -29,8 +29,8 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import PolygonSymbol3D from "@arcgis/core/symbols/PolygonSymbol3D";
 import WaterSymbol3DLayer from "@arcgis/core/symbols/WaterSymbol3DLayer";
 
-@subclass("DiaramaBuilder")
-export class DiaramaBuilder extends Accessor implements ConstructProperties {
+@subclass("DioramaBuilder")
+export class DioramaBuilder extends Accessor implements ConstructProperties {
   @property()
   view!: SceneView;
 
@@ -293,7 +293,7 @@ export class DiaramaBuilder extends Accessor implements ConstructProperties {
     });
 
     this.sampler = new ExaggeratedElevationSampler({
-      sampler: await layer.createElevationSampler(area, { demResolution, signal }),
+      sampler: await layer.createElevationSampler(area, { demResolution, signal, noDataValue: 1e-30 }),
       config: this.config
     });
   }
