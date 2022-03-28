@@ -33,10 +33,13 @@ export class Configuration extends Accessor {
   }
 
   @property()
-  samplingResolutionPixels = 256;
+  samplingResolutionPixels = 1024;
 
   @property()
-  colorTextureResolution = 256;
+  colorTextureResolution = 1024;
+
+  @property()
+  elevationMeshResolutionPixels = 1024;
 
   @property()
   waterSurfaceResolution = 32;
@@ -61,9 +64,6 @@ export class Configuration extends Accessor {
     { offset: 0.9, color: "#fecf92" },
     { offset: 1, color: "#fecf92" }
   ]);
-
-  @property()
-  elevationMeshResolutionPixels = 256;
 
   @property()
   surfacePaddingBottom = 0.01;
