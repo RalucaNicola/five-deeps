@@ -6,6 +6,7 @@ import Map from "@arcgis/core/Map";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import { Configuration } from "./Configuration";
 import { DioramaBuilder } from "./DioramaBuilder";
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 
 @subclass("App")
 export class App extends Widget {
@@ -13,11 +14,15 @@ export class App extends Widget {
 
   private view = new SceneView({
     map: new Map({
-      basemap: "topo-vector",
       ground: {
         opacity: 0,
         surfaceColor: [100, 100, 50]
-      }
+      },
+      layers: [
+        new GraphicsLayer({
+          fullExtent: this.config.displayArea
+        })
+      ]
     }),
 
     camera: {
