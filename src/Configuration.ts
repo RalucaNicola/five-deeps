@@ -36,13 +36,13 @@ export class Configuration extends Accessor {
   samplingResolutionPixels = 1024;
 
   @property()
-  colorTextureResolution = 1024;
+  colorTextureResolution = 512;
 
   @property()
   elevationMeshResolutionPixels = 1024;
 
   @property()
-  waterSurfaceResolution = 32;
+  waterSurfaceResolution = 64;
 
   @property()
   hillshadeStretchStddev = 2;
@@ -74,7 +74,7 @@ export class Configuration extends Accessor {
   }
 
   @property()
-  shadingMode: ShadingMode = "none";
+  shadingMode: ShadingMode = "multi-hillshade";
 
   @property()
   waterSurfaceNoiseSeed = 123;

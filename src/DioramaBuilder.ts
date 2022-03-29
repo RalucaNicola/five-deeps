@@ -19,7 +19,7 @@ import { meshCreateFromElevation } from "./cached";
 
 import { Configuration, ShadingMode } from "./Configuration";
 import { ExaggeratedElevationSampler } from "./ExaggeratedElevationSampler";
-import { makeGradient } from "./gradient";
+import { drawGlassGradient, makeGradient } from "./gradient";
 import { createExtrudedBox } from "./meshUtils";
 import { computeHillshade, computeNormals, SanmplingFunction } from "./raster";
 import { sampleElevation } from "./sampling";
@@ -28,6 +28,7 @@ import SimplexNoise from "simplex-noise";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import PolygonSymbol3D from "@arcgis/core/symbols/PolygonSymbol3D";
 import WaterSymbol3DLayer from "@arcgis/core/symbols/WaterSymbol3DLayer";
+import caustics from "./images/caustics.png";
 
 @subclass("DioramaBuilder")
 export class DioramaBuilder extends Accessor implements ConstructProperties {
@@ -59,10 +60,18 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   private sampler: ExaggeratedElevationSampler | null = null;
 
   @property()
-  private zmin: number = Number.POSITIVE_INFINITY;
+  zmin: number = Number.POSITIVE_INFINITY;
 
   @property()
-  private zmax: number = Number.POSITIVE_INFINITY;
+  zmax: number = Number.POSITIVE_INFINITY;
+
+  @property()
+  private numUpdating = 0;
+
+  @property()
+  get updating(): boolean {
+    return this.numUpdating !== 0;
+  }
 
   @property()
   get terrainColorTexture(): MeshTexture | null {
@@ -162,7 +171,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     const noise = new SimplexNoise(waterSurfaceNoiseSeed);
 
     const zheight = zmax - zmin;
-    const zero = zmax + 0.5 * zheight;
+    const zero = zmax + 0.7 * zheight;
 
     return (x, y) => {
       const xn = (x - xmin) / width;
@@ -180,9 +189,13 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   private handles = new Handles();
+  private causticsImage: HTMLImageElement;
 
   constructor(props: ConstructProperties) {
     super(props);
+    this.causticsImage = new Image();
+    this.causticsImage.src = caustics;
+    this.causticsImage.decode();
   }
 
   destroy(): void {
@@ -192,15 +205,21 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   protected initialize(): void {
     this.view.map.add(this.layer);
 
+    const wrapUpdating = <T>(promise: Promise<T>): Promise<T> => {
+      this.numUpdating++;
+      promise.finally(() => this.numUpdating--);
+      return promise;
+    };
+
     const restartingRecreateSampler = restart(
       async (signal: AbortSignal, params: RecreateSamplerParams | undefined) => {
-        return params ? this.recreateSampler(signal, params) : null;
+        return params ? wrapUpdating(this.recreateSampler(signal, params)) : null;
       }
     );
 
     const restartingRecreateElevationMesh = restart(
       async (signal: AbortSignal, params: RecreateElevationMeshParams | undefined) => {
-        return params ? this.recreateElevationMesh(signal, params) : null;
+        return params ? wrapUpdating(this.recreateElevationMesh(signal, params)) : null;
       }
     );
 
@@ -418,11 +437,16 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     canvas.height = size;
 
     const ctx = canvas.getContext("2d")!;
+
+    ctx.save();
     ctx.putImageData(imageData, 0, 0);
     ctx.filter = `saturate(${terrainColorSaturation})`;
     ctx.drawImage(canvas, 0, 0);
+    ctx.restore();
 
     const { shadingMode } = this.config;
+
+    ctx.save();
 
     if ((shadingMode === "hillshade" || shadingMode === "multi-hillshade") && this.cachedElevationSampleFunction) {
       const { sourceArea, hillshadeStretchStddev } = this.config;
@@ -447,6 +471,12 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
       ctx.globalCompositeOperation = "soft-light";
       ctx.drawImage(hillshadeCanvas, 0, 0);
+    }
+
+    ctx.restore();
+
+    for (let i = 0; i < 3; i++) {
+      ctx.drawImage(this.causticsImage, 0, 0, size, size);
     }
 
     return new MeshTexture({ data: ctx.getImageData(0, 0, size, size) });
@@ -637,7 +667,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
           new WaterSymbol3DLayer({
             waterbodySize: "large",
             waveStrength: "moderate",
-            color: [44, 127, 174]
+            color: [30, 160, 160]
           })
         ]
       })
@@ -665,7 +695,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     const { xmin: xminSource, width: widthSource, ymin: yminSource, height: heightSource } = sourceArea;
     const { xmin, ymin, width, height } = displayArea;
 
-    const { position, faces } = createExtrudedBox(
+    const { position, uv, faces, numVertices } = createExtrudedBox(
       terrainSurfaceVertexResolution.width,
       terrainSurfaceVertexResolution.height,
       (out, x, y) => {
@@ -680,16 +710,35 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       }
     );
 
+    // Flip x coordinate of the y-direction walls to mirror the glass gradient a bit nicer
+    const uvo1 = numVertices.x * 2;
+    const uvo2 = (numVertices.x * 2 + numVertices.y) * 2;
+
+    for (let i = 0; i < numVertices.y * 2; i += 2) {
+      const i1 = uvo1 + i;
+      const i2 = uvo2 + i;
+
+      uv[i1] = 1 - uv[i1];
+      uv[i2] = 1 - uv[i2];
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const gradient = drawGlassGradient(canvas.getContext("2d")!, 256, 256);
+
     this.glassBoxGraphic = new Graphic({
       geometry: new Mesh({
-        vertexAttributes: { position },
+        vertexAttributes: { position, uv },
         components: [
           new MeshComponent({
             faces,
             material: new MeshMaterialMetallicRoughness({
-              roughness: 0.2,
-              metallic: 0,
-              color: [215, 255, 255, 0.3]
+              colorTexture: new MeshTexture({ data: gradient, transparent: true }),
+              emissiveColor: [100, 100, 100],
+              alphaMode: "blend",
+              roughness: 1,
+              metallic: 0
             })
           })
         ]

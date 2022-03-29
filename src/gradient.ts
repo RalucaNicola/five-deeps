@@ -21,6 +21,30 @@ export function makeGradient(stops: Stop[]): ImageData {
   return ctx.getImageData(0, 0, 1, height);
 }
 
+export function drawGlassGradient(ctx: CanvasRenderingContext2D, width: number, height: number): ImageData {
+  const dx = width * 0.15;
+  const dy = height * 0.15;
+  const gradient = ctx.createRadialGradient(
+    width / 2 + dx,
+    height / 2 - dy,
+    0,
+    width / 2 + dx,
+    height / 2 - dy,
+    (Math.sqrt(width * width + height * height) / 2) * 1.6
+  );
+
+  gradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+  gradient.addColorStop(0.5, "rgba(180, 255, 255, 0)");
+  gradient.addColorStop(1, "rgba(0, 163, 163)");
+
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+
+  return ctx.getImageData(0, 0, width, height);
+}
+
 export function makeGradientSampler(stops: Stop[]): (value: number) => number[] {
   const colors = stops.map(({ color }) => (typeof color === "string" ? hexToRGB(color) : color));
 

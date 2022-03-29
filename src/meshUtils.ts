@@ -1,11 +1,17 @@
 export function extrude(
   position: Float64Array,
+  u: Float32Array | null,
   height: (x: number, y: number, z: number) => number
-): { position: Float64Array; faces: Uint32Array } {
+): { position: Float64Array; uv: Float32Array; faces: Uint32Array } {
   const numVertices = position.length / 3;
   const newPosition = new Float64Array(numVertices * 6);
+  const uv = new Float32Array(numVertices * 4);
 
   let ptr = 0;
+  let uvPtr = 0;
+
+  let zmin = Number.POSITIVE_INFINITY;
+  let zmax = Number.NEGATIVE_INFINITY;
 
   for (let i = 0; i < numVertices; i++) {
     const x = position[i * 3 + 0];
@@ -17,7 +23,35 @@ export function extrude(
     newPosition[ptr++] = z;
     newPosition[ptr++] = x;
     newPosition[ptr++] = y;
-    newPosition[ptr++] = z + height(x, y, z);
+
+    const z2 = z + height(x, y, z);
+    newPosition[ptr++] = z2;
+
+    zmin = Math.min(zmin, z, z2);
+    zmax = Math.max(zmax, z, z2);
+
+    uv[uvPtr++] = u ? u[i] : 0;
+    uv[uvPtr++] = 0;
+    uv[uvPtr++] = u ? u[i] : 0;
+    uv[uvPtr++] = 0;
+  }
+
+  ptr = 0;
+  uvPtr = 0;
+
+  const zh = zmax - zmin;
+
+  for (let i = 0; i < numVertices; i++) {
+    const z1 = newPosition[ptr + 2];
+
+    uv[++uvPtr] = (z1 - zmin) / zh;
+    ++uvPtr;
+
+    const z2 = newPosition[ptr + 5];
+    uv[++uvPtr] = (z2 - zmin) / zh;
+    ++uvPtr;
+
+    ptr += 6;
   }
 
   const numQuads = numVertices - 1;
@@ -38,12 +72,13 @@ export function extrude(
 
   return {
     position: newPosition,
+    uv,
     faces
   };
 }
 
 export function extrudeToZ(position: Float64Array, extrudedZ: number): { position: Float64Array; faces: Uint32Array } {
-  return extrude(position, (_x, _y, z) => extrudedZ - z);
+  return extrude(position, null, (_x, _y, z) => extrudedZ - z);
 }
 
 export function createExtrudedBox(
@@ -51,14 +86,15 @@ export function createExtrudedBox(
   height: number,
   evaluate: (out: number[], x: number, y: number) => void,
   extrudeZ: number | ((x: number, y: number, z: number) => number)
-): { position: Float64Array; faces: Uint32Array; uv: Float32Array } {
+): { position: Float64Array; faces: Uint32Array; uv: Float32Array; numVertices: { x: number; y: number } } {
   let writePtr = 0;
 
-  const position = new Float64Array(((width + 1) * 2 + (height + 1) * 2 + 4) * 3);
+  const numLine = (width + 2) * 2 + (height + 2) * 2;
+  const position = new Float64Array(numLine * 3);
+  const u = new Float32Array(numLine);
   const out = [0, 0, 0];
 
-  let zmin = typeof extrudeZ === "number" ? extrudeZ : Number.POSITIVE_INFINITY;
-  let zmax = typeof extrudeZ === "number" ? extrudeZ : Number.NEGATIVE_INFINITY;
+  let uPtr = 0;
 
   const fillPosition = (xmin: number, xmax: number, ymin: number, ymax: number) => {
     let x = xmin;
@@ -74,17 +110,18 @@ export function createExtrudedBox(
       position[writePtr++] = out[1];
       position[writePtr++] = out[2];
 
+      u[uPtr++] = dx ? (x - xmin) / (xmax - xmin) : (y - ymin) / (ymax - ymin);
+
       x += dx;
       y += dy;
-
-      zmin = Math.min(zmin, out[2]);
-      zmax = Math.max(zmax, out[2]);
     }
 
     let lastPtr = writePtr - 3;
     position[writePtr++] = position[lastPtr++];
     position[writePtr++] = position[lastPtr++];
     position[writePtr++] = position[lastPtr++];
+
+    u[uPtr++] = 1;
   };
 
   fillPosition(0, width, 0, 0);
@@ -94,32 +131,14 @@ export function createExtrudedBox(
 
   const extruded = extrude(
     position,
-    typeof extrudeZ === "number"
-      ? (_x, _y, z) => extrudeZ - z
-      : (x, y, z) => {
-          const ret = extrudeZ(x, y, z);
-          zmin = Math.min(zmin, ret + z);
-          zmax = Math.max(zmax, ret + z);
-          return ret;
-        }
+    u,
+    typeof extrudeZ === "number" ? (_x, _y, z) => extrudeZ - z : (x, y, z) => extrudeZ(x, y, z)
   );
-  const numVertices = extruded.position.length / 3;
-  const uv = new Float32Array(numVertices * 2);
 
-  let uvPtr = 0;
-  let posPtr = 0;
-
-  for (let i = 0; i < numVertices; i++) {
-    const z1 = extruded.position[posPtr + 2];
-    const z2 = extruded.position[posPtr + 5];
-
-    uv[uvPtr++] = 0;
-    uv[uvPtr++] = (z1 - zmin) / (zmax - zmin);
-    uv[uvPtr++] = 0;
-    uv[uvPtr++] = (z2 - zmin) / (zmax - zmin);
-
-    posPtr += 6;
-  }
-
-  return { position: extruded.position, faces: extruded.faces, uv };
+  return {
+    position: extruded.position,
+    faces: extruded.faces,
+    uv: extruded.uv,
+    numVertices: { x: (width + 2) * 2, y: (height + 2) * 2 }
+  };
 }
