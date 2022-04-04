@@ -10,7 +10,7 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "@arcgis/core": "^4.23.0-next.20220303",
+    "@arcgis/core": "^4.24.0-next.20220403",
     "@esri/calcite-components": "^1.0.0-beta.80",
     "idb": "^7.0.1",
     "simplex-noise": "^3.0.1",
