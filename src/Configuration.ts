@@ -7,9 +7,6 @@ import { makeGradientSampler } from "./gradient";
 @subclass("Configuration")
 export class Configuration extends Accessor {
   @property()
-  exaggerationFactor = 10;
-
-  @property()
   sourceArea = new Extent({
     xmin: 15727788.150199998,
     ymin: 1135244.2035999997,
@@ -24,6 +21,8 @@ export class Configuration extends Accessor {
     xmax: 100,
     ymin: 0,
     ymax: 100,
+    zmin: 0,
+    zmax: 50,
     spatialReference: SpatialReference.WebMercator
   });
 
@@ -39,7 +38,7 @@ export class Configuration extends Accessor {
   colorTextureResolution = 512;
 
   @property()
-  elevationMeshResolutionPixels = 1024;
+  elevationMeshResolutionPixels = 256;
 
   @property()
   waterSurfaceResolution = 64;
@@ -49,6 +48,9 @@ export class Configuration extends Accessor {
 
   @property()
   terrainColorSaturation = 1.5;
+
+  @property()
+  glassTextureResolution = 256;
 
   @property()
   colorRamp = makeGradientSampler([
@@ -67,11 +69,6 @@ export class Configuration extends Accessor {
 
   @property()
   surfacePaddingBottom = 0.01;
-
-  @property()
-  get areaScaleAdjustedExaggerationFactor(): number {
-    return this.exaggerationFactor * this.areaScale;
-  }
 
   @property()
   shadingMode: ShadingMode = "multi-hillshade";

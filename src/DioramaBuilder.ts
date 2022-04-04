@@ -22,7 +22,6 @@ import { ExaggeratedElevationSampler } from "./ExaggeratedElevationSampler";
 import { drawGlassGradient, makeGradient } from "./gradient";
 import { createExtrudedBox } from "./meshUtils";
 import { computeHillshade, computeNormals, SanmplingFunction } from "./raster";
-import { sampleElevation } from "./sampling";
 import SolidEdges3D from "@arcgis/core/symbols/edges/SolidEdges3D";
 import SimplexNoise from "simplex-noise";
 import Polygon from "@arcgis/core/geometry/Polygon";
@@ -54,7 +53,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   private glassBoxGraphic: Graphic | null = null;
 
   @property()
-  private waterSurfaceGraphic: Graphic | null = null;
+  private topSurfaceGraphic: Graphic | null = null;
 
   @property()
   private sampler: ExaggeratedElevationSampler | null = null;
@@ -122,7 +121,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       let px = xmin;
 
       for (let x = 0; x < size; x++) {
-        samples[ptr++] = sampleElevation(this.sampler.sampler, px, py);
+        samples[ptr++] = this.sampler.sampler.elevationAt(px, py);
         px += dx;
       }
 
@@ -147,6 +146,11 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   @property()
+  get glassCanvas(): HTMLCanvasElement {
+    return document.createElement("canvas");
+  }
+
+  @property()
   get terrainSurfaceVertexResolution(): TerrainSurfaceVertexResolution {
     const { sourceArea, elevationMeshResolutionPixels } = this.config;
     const demResolution = Math.max(sourceArea.width, sourceArea.height) / elevationMeshResolutionPixels;
@@ -157,21 +161,29 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   @property()
-  get waterSurfaceSampler(): WaterSurfaceSampler | null {
-    const { zmin, zmax } = this;
+  get topSurfaceZ(): number {
+    return this.config.displayArea.height * 0.65;
+  }
 
-    if (!Number.isFinite(zmin) || !Number.isFinite(zmax)) {
-      return null;
-    }
+  @property()
+  get topSurfaceSampler(): TopSurfaceSampler | null {
+    return this.sampler && this.sampler.sourceZmax < 0 ? this.waterSurfaceSampler : this.groundSurfaceSampler;
+  }
 
+  @property()
+  get groundSurfaceSampler(): TopSurfaceSampler | null {
+    const z = this.topSurfaceZ;
+    return () => z;
+  }
+
+  @property()
+  get waterSurfaceSampler(): TopSurfaceSampler | null {
     const displayArea = this.config.displayArea;
     const { xmin, ymin, width, height } = displayArea;
     const { waterSurfaceNoiseHarmonics, waterSurfaceNoiseSeed } = this.config;
 
     const noise = new SimplexNoise(waterSurfaceNoiseSeed);
-
-    const zheight = zmax - zmin;
-    const zero = zmax + 0.7 * zheight;
+    const zero = this.topSurfaceZ;
 
     return (x, y) => {
       const xn = (x - xmin) / width;
@@ -186,6 +198,17 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
       return z;
     };
+  }
+
+  @property()
+  get glassGradientImageData(): ImageData {
+    const glassTextureResolution = this.config.glassTextureResolution;
+
+    const canvas = this.glassCanvas;
+    canvas.width = glassTextureResolution;
+    canvas.height = glassTextureResolution;
+
+    return drawGlassGradient(canvas.getContext("2d")!, glassTextureResolution, glassTextureResolution);
   }
 
   private handles = new Handles();
@@ -225,9 +248,13 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
     this.handles.add([
       watch(
+        () => ({ sourceArea: this.config.sourceArea, samplingResolutionPixels: this.config.samplingResolutionPixels }),
+        restartingRecreateSampler,
+        { initial: true }
+      ),
+      watch(
         () => ({
           sampler: this.sampler,
-          exaggerationFactor: this.config.areaScaleAdjustedExaggerationFactor,
           sourceArea: this.config.sourceArea,
           terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution,
           displayArea: this.config.displayArea
@@ -270,9 +297,11 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
         () => ({
           displayArea: this.config.displayArea,
           sourceArea: this.config.sourceArea,
+          glassTextureResolution: this.config.glassTextureResolution,
           sampler: this.sampler,
           terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution,
-          waterSurfaceSampler: this.waterSurfaceSampler
+          glassGradientImageData: this.glassGradientImageData,
+          topSurfaceSampler: this.topSurfaceSampler
         }),
         (params) => {
           if (params) {
@@ -281,21 +310,21 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
         }
       ),
       watch(
-        (): RecreateWaterSurfaceParams => ({
+        (): RecreateTopSurfaceParams => ({
           displayArea: this.config.displayArea,
-          waterSurfaceSampler: this.waterSurfaceSampler,
-          waterSurfaceResolution: this.config.waterSurfaceResolution
+          topSurfaceSampler: this.topSurfaceSampler,
+          waterSurfaceResolution: this.config.waterSurfaceResolution,
+          glassGradientImageData: this.glassGradientImageData
         }),
         (params) => {
           if (params) {
-            this.recreateWaterSurface(params);
+            if (params.topSurfaceSampler === this.groundSurfaceSampler) {
+              this.recreateGlassTopSurface(params);
+            } else {
+              this.recreateWaterSurface(params);
+            }
           }
         },
-        { initial: true }
-      ),
-      watch(
-        () => ({ sourceArea: this.config.sourceArea, samplingResolutionPixels: this.config.samplingResolutionPixels }),
-        restartingRecreateSampler,
         { initial: true }
       )
     ]);
@@ -305,6 +334,8 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     signal: AbortSignal,
     { sourceArea: area, samplingResolutionPixels }: RecreateSamplerParams
   ): Promise<void> {
+    this.sampler = null;
+
     const demResolution = Math.max(area.width, area.height) / samplingResolutionPixels;
 
     const layer = new ElevationLayer({
@@ -626,15 +657,15 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
   private recreateWaterSurface({
     displayArea,
-    waterSurfaceSampler,
+    topSurfaceSampler,
     waterSurfaceResolution
-  }: RecreateWaterSurfaceParams): void {
-    if (this.waterSurfaceGraphic) {
-      this.layer.remove(this.waterSurfaceGraphic);
-      this.waterSurfaceGraphic = null;
+  }: RecreateTopSurfaceParams): void {
+    if (this.topSurfaceGraphic) {
+      this.layer.remove(this.topSurfaceGraphic);
+      this.topSurfaceGraphic = null;
     }
 
-    if (!waterSurfaceSampler) {
+    if (!topSurfaceSampler) {
       return;
     }
 
@@ -642,7 +673,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     const stepx = (xmax - xmin) / waterSurfaceResolution;
     const stepy = (ymax - ymin) / waterSurfaceResolution;
 
-    const addZ = (x: number, y: number) => [x, y, waterSurfaceSampler(x, y)];
+    const addZ = (x: number, y: number) => [x, y, topSurfaceSampler(x, y)];
 
     const rings: number[][][] = [];
 
@@ -660,7 +691,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       spatialReference: SpatialReference.WebMercator
     });
 
-    this.waterSurfaceGraphic = new Graphic({
+    this.topSurfaceGraphic = new Graphic({
       geometry: polygon,
       symbol: new PolygonSymbol3D({
         symbolLayers: [
@@ -673,14 +704,64 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       })
     });
 
-    this.layer.add(this.waterSurfaceGraphic);
+    this.layer.add(this.topSurfaceGraphic);
+  }
+
+  private recreateGlassTopSurface({
+    displayArea,
+    topSurfaceSampler,
+    glassGradientImageData
+  }: RecreateTopSurfaceParams): void {
+    if (this.topSurfaceGraphic) {
+      this.layer.remove(this.topSurfaceGraphic);
+      this.topSurfaceGraphic = null;
+    }
+
+    if (!topSurfaceSampler) {
+      return;
+    }
+
+    const { width, height } = displayArea;
+
+    const top = displayArea.center.clone();
+    top.z = topSurfaceSampler(top.x, top.y) - 0.5;
+
+    const mesh = Mesh.createPlane(top, {
+      size: { width, height },
+      geographic: false,
+      material: new MeshMaterialMetallicRoughness({
+        colorTexture: new MeshTexture({ data: glassGradientImageData, transparent: true }),
+        emissiveColor: [100, 100, 100],
+        alphaMode: "blend",
+        roughness: 1,
+        metallic: 0
+      })
+    });
+
+    this.topSurfaceGraphic = new Graphic({
+      geometry: mesh,
+      symbol: new MeshSymbol3D({
+        symbolLayers: [
+          new FillSymbol3DLayer({
+            material: { color: "white" },
+            edges: new SolidEdges3D({
+              size: "1px",
+              color: [255, 255, 255, 0.8]
+            })
+          })
+        ]
+      })
+    });
+
+    this.layer.add(this.topSurfaceGraphic);
   }
 
   private recreateGlassBox({
     sourceArea,
     displayArea,
     sampler,
-    waterSurfaceSampler,
+    topSurfaceSampler,
+    glassGradientImageData,
     terrainSurfaceVertexResolution
   }: RecreateGlassBoxParams): void {
     if (this.glassBoxGraphic) {
@@ -688,7 +769,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       this.glassBoxGraphic = null;
     }
 
-    if (!sampler || !waterSurfaceSampler) {
+    if (!sampler || !topSurfaceSampler) {
       return;
     }
 
@@ -701,7 +782,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       (out, x, y) => {
         out[0] = xmin + (x / terrainSurfaceVertexResolution.width) * width;
         out[1] = ymin + (y / terrainSurfaceVertexResolution.height) * height;
-        out[2] = waterSurfaceSampler(out[0], out[1]);
+        out[2] = topSurfaceSampler(out[0], out[1]);
       },
       (x, y, z) => {
         const px = ((x - xmin) / width) * widthSource + xminSource;
@@ -722,11 +803,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
       uv[i2] = 1 - uv[i2];
     }
 
-    const canvas = document.createElement("canvas");
-    canvas.width = 256;
-    canvas.height = 256;
-    const gradient = drawGlassGradient(canvas.getContext("2d")!, 256, 256);
-
     this.glassBoxGraphic = new Graphic({
       geometry: new Mesh({
         vertexAttributes: { position, uv },
@@ -734,7 +810,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
           new MeshComponent({
             faces,
             material: new MeshMaterialMetallicRoughness({
-              colorTexture: new MeshTexture({ data: gradient, transparent: true }),
+              colorTexture: new MeshTexture({ data: glassGradientImageData, transparent: true }),
               emissiveColor: [100, 100, 100],
               alphaMode: "blend",
               roughness: 1,
@@ -794,14 +870,16 @@ interface RecreateSurfaceBoxMeshParams
   terrainSurfaceVertexResolution: TerrainSurfaceVertexResolution;
 }
 
-interface RecreateGlassBoxParams extends Pick<Configuration, "displayArea" | "sourceArea"> {
-  waterSurfaceSampler: WaterSurfaceSampler | null;
+interface RecreateGlassBoxParams extends Pick<Configuration, "displayArea" | "sourceArea" | "glassTextureResolution"> {
+  topSurfaceSampler: TopSurfaceSampler | null;
   terrainSurfaceVertexResolution: TerrainSurfaceVertexResolution;
   sampler: ExaggeratedElevationSampler | null;
+  glassGradientImageData: ImageData;
 }
 
-interface RecreateWaterSurfaceParams extends Pick<Configuration, "displayArea" | "waterSurfaceResolution"> {
-  waterSurfaceSampler: WaterSurfaceSampler | null;
+interface RecreateTopSurfaceParams extends Pick<Configuration, "displayArea" | "waterSurfaceResolution"> {
+  topSurfaceSampler: TopSurfaceSampler | null;
+  glassGradientImageData: ImageData;
 }
 
 interface TerrainSurfaceVertexResolution {
@@ -811,4 +889,4 @@ interface TerrainSurfaceVertexResolution {
 }
 
 type TerrainVisualizationParams = TerrainVisualizationNormalsParams | TerrainVisualizationColorParams;
-type WaterSurfaceSampler = (x: number, y: number) => number;
+type TopSurfaceSampler = (x: number, y: number) => number;
