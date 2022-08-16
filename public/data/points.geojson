@@ -1,0 +1,80 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Java Trench",
+        "depth": 7192,
+        "ocean": "Pacific Ocean",
+        "description1": "The Java Trench was formed by subduction, or one tectonic plate pushing another.",
+        "description2": "Subduction can create trenches, mountains, or island arcs, and often causes seismic and volcanic activity.",
+        "year": 1958
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [109.85207181075984, -8.016509942959702]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Molloy Hole",
+        "depth": 5550,
+        "ocean": "Arctic Ocean",
+        "description1": "Trenches are depths of over 6,000 meters, which is why the Molloy Hole is not a trench.",
+        "description2": "The Molloy Hole was formed by seafloor spreading, or tectonic plates moving away from each other.",
+        "year": 1972
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [2.499957204798926, 76.00020707935111]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "South Sandwich Trench",
+        "depth": 7434,
+        "ocean": "Southern Ocean",
+        "description1": "The area of the ocean beyond a depth of 6000 meters is called the Hadal zone.",
+        "description2": "The South Sandwich Trench is the only sub-zero temperature Hadal Zone on the planet.",
+        "year": 1926
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-25.000000204859887, -56.499525148767766]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Puerto Rico Trench",
+        "depth": 8376,
+        "ocean": "Atlantic Ocean",
+        "description1": "Trenches are home to unique species like deep-sea sponges, black corals, anemones, and jellyfish.",
+        "description2": "The deep sea also positively impacts other ecosystems by acting as a sink for organic carbon.",
+        "year": 1964
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-65.9998283058703, 20.00060412021876]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mariana Trench",
+        "depth": 10935,
+        "ocean": "Pacific Ocean",
+        "description1": "Within this trench lies Challenger Deep, the deepest point on Earth.",
+        "description2": "Microplastics have been discovered in Challenger Deep, displaying the far-reaching impacts of pollution.",
+        "year": 1875
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [142.19956582458715, 11.35019574348784]
+      }
+    }
+  ]
+}
