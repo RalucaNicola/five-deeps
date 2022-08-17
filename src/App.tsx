@@ -217,7 +217,10 @@ export class App extends Widget {
         }
       })]
     })
-  })
+  });
+
+  private highlightedPointName: string | null = null;
+
 
   protected initialize(): void {
     // when(
@@ -235,14 +238,23 @@ export class App extends Widget {
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
-              if (results[0].graphic) {
-                this.highlightGraphic.geometry = results[0].graphic.geometry;
-                this.selectView.graphics.add(this.highlightGraphic);
-                this.elements.selectViewer.style.cursor = "pointer";
+              const graphic = results[0].graphic;
+              if (graphic) {
+                if (this.highlightedPointName !== graphic.attributes.name) {
+                  this.highlightGraphic.geometry = graphic.geometry;
+                  this.selectView.graphics.add(this.highlightGraphic);
+                  this.elements.selectViewer.style.cursor = "pointer";
+                  this.highlightedPointName = graphic.attributes.name;
+                  this.elements.overlayInfo.innerHTML = `<div class="left-info"><p class="title">${graphic.attributes.name}</p></div><div class="separator"></div><div class="right-info"><p>Discovered: ${graphic.attributes.year}</p><p>Depth: ${graphic.attributes.depth}</p><p>${graphic.attributes.ocean}</p></div>`;
+                  this.elements.overlayInfo.classList.add('fade-in');
+                }
               }
             } else {
               this.selectView.graphics.removeAll();
               this.elements.selectViewer.style.cursor = "default";
+              this.highlightedPointName = null;
+              this.elements.overlayInfo.innerHTML = ``;
+              this.elements.overlayInfo.classList.remove('fade-in');
             }
           });
         });
@@ -339,7 +351,8 @@ export class App extends Widget {
   private elements = {
     selectViewer: null! as HTMLDivElement,
     dioramaViewer: null! as HTMLDivElement,
-    intro: null! as HTMLDivElement
+    intro: null! as HTMLDivElement,
+    overlayInfo: null! as HTMLDivElement
   };
 
   render() {
@@ -356,6 +369,8 @@ export class App extends Widget {
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
 
+        </div>
+        <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
         </div>
         <div class="intro" afterCreate={(node: HTMLDivElement) => (this.elements.intro = node)} onclick={() => this.hideIntro()}>
           <h1>THE FIVE DEEPS</h1>

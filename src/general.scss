@@ -53,6 +53,48 @@ html,
   }
 }
 
+.overlay-info {
+  opacity: 1;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  left: 0;
+  transition: opacity 100ms linear;
+  pointer-events: none;
+  color: white;
+  display: flex;
+  justify-content: center;
+  letter-spacing: 3px;
+  font-weight: 500;
+
+  .title {
+    text-transform: uppercase;
+    background-color: rgba(252, 186, 3);
+    padding: 4px;
+  }
+
+  .left-info {
+    text-align: right;
+    padding-right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .separator {
+    width: 1px;
+    background: linear-gradient(transparent, white 25%, white 75%, transparent);
+  }
+
+  .right-info {
+    padding-left: 10px;
+  }
+
+  &.fade-in {
+    opacity: 1;
+  }
+}
+
 #viewer {
   display: flex;
   flex-grow: 1;
