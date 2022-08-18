@@ -333,6 +333,9 @@ export class App extends Widget {
           }).catch(console.error);
         });
         this.selectView.on('click', (event) => {
+          if (this.animationFrameTask) {
+            this.stopGlobeAnimation();
+          }
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
