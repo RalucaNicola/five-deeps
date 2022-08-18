@@ -167,7 +167,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
   @property()
   get topSurfaceSampler(): TopSurfaceSampler | null {
-    return this.sampler && this.sampler.sourceZmax < 0 ? this.waterSurfaceSampler : this.groundSurfaceSampler;
+    return this.sampler ? this.waterSurfaceSampler : this.groundSurfaceSampler;
   }
 
   @property()
@@ -341,7 +341,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     const layer = new ElevationLayer({
       url: "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/TopoBathy3D/ImageServer"
     });
-
     this.sampler = new ExaggeratedElevationSampler({
       sampler: await layer.createElevationSampler(area, { demResolution, signal, noDataValue: 1e-30 }),
       config: this.config
@@ -698,7 +697,7 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
           new WaterSymbol3DLayer({
             waterbodySize: "large",
             waveStrength: "moderate",
-            color: [30, 160, 160]
+            color: [30, 160, 160, 0.8]
           })
         ]
       })

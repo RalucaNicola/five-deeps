@@ -32,7 +32,7 @@ export class Configuration extends Accessor {
   }
 
   @property()
-  samplingResolutionPixels = 1024;
+  samplingResolutionPixels = 512;
 
   @property()
   colorTextureResolution = 512;
@@ -54,17 +54,8 @@ export class Configuration extends Accessor {
 
   @property()
   colorRamp = makeGradientSampler([
-    { offset: 0, color: "#000004" },
-    { offset: 0.1, color: "#140e36" },
-    { offset: 0.2, color: "#3b0f70" },
-    { offset: 0.3, color: "#641a80" },
-    { offset: 0.4, color: "#8c2981" },
-    { offset: 0.5, color: "#b5367a" },
-    { offset: 0.6, color: "#de4968" },
-    { offset: 0.7, color: "#f66e5c" },
-    { offset: 0.8, color: "#fe9f6d" },
-    { offset: 0.9, color: "#fecf92" },
-    { offset: 1, color: "#fecf92" }
+    { offset: 0, color: "#022659" },
+    { offset: 1, color: "#a7cef2" }
   ]);
 
   @property()

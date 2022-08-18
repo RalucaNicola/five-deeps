@@ -17,17 +17,14 @@ import { setAssetPath } from "@esri/calcite-components/dist/components";
 import { when } from "@arcgis/core/core/reactiveUtils";
 import { addFrameTask } from "@arcgis/core/core/scheduling";
 import Camera from "@arcgis/core/Camera";
-import Search from "@arcgis/core/widgets/Search";
 import MediaLayer from "@arcgis/core/layers/MediaLayer";
 import ImageElement from "@arcgis/core/layers/support/ImageElement";
 import Extent from "@arcgis/core/geometry/Extent";
 import ExtentAndRotationGeoreference from "@arcgis/core/layers/support/ExtentAndRotationGeoreference";
-import MapView from "@arcgis/core/views/MapView";
 import ElevationLayer from "@arcgis/core/layers/ElevationLayer";
 import Ground from "@arcgis/core/Ground";
 import Basemap from "@arcgis/core/Basemap";
 import TileLayer from "@arcgis/core/layers/TileLayer";
-import VideoElement from "@arcgis/core/layers/support/VideoElement";
 import GeoJSONLayer from "@arcgis/core/layers/GeoJSONLayer";
 import LabelClass from "@arcgis/core/layers/support/LabelClass";
 import LabelSymbol3D from "@arcgis/core/symbols/LabelSymbol3D";
@@ -35,6 +32,8 @@ import TextSymbol3DLayer from "@arcgis/core/symbols/TextSymbol3DLayer";
 import { SimpleRenderer } from "@arcgis/core/renderers";
 import { IconSymbol3DLayer, PointSymbol3D } from "@arcgis/core/symbols";
 import Graphic from "@arcgis/core/Graphic";
+
+import { extents } from './extents';
 
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
@@ -44,12 +43,12 @@ export class App extends Widget {
 
   private readonly initialCamera = new Camera({
     position: {
-      x: -0.00144551,
-      y: -0.00115264,
-      z: 57.27806
+      x: -0.00126813,
+      y: -0.00107487,
+      z: 114.00350
     },
-    heading: 50.55,
-    tilt: 74.87
+    heading: 49.60,
+    tilt: 69.68
   });
 
   private view = new SceneView({
@@ -124,6 +123,25 @@ export class App extends Widget {
     ]
   });
 
+  private labelsLayer = new MediaLayer({
+    source: [new ImageElement({
+      image: "./assets/pacific-ocean.png",
+      georeference: new ExtentAndRotationGeoreference({
+        extent: new Extent({
+          spatialReference: {
+            wkid: 4326
+          },
+          xmin: -179,
+          ymin: 17,
+          xmax: -150,
+          ymax: 23,
+        }),
+        rotation: -5
+      })
+    })],
+    opacity: 0.8
+  })
+
   private selectView = new SceneView({
     map: new Map({
       ground: new Ground({
@@ -141,6 +159,7 @@ export class App extends Widget {
         ]
       }),
       layers: [
+        this.labelsLayer,
         new MediaLayer({
           // source: [new VideoElement({
           //   video: "./assets/clouds-animated.mp4",
@@ -221,7 +240,6 @@ export class App extends Widget {
 
   private highlightedPointName: string | null = null;
 
-
   protected initialize(): void {
     // when(
     //   () => !(this.dioramaBuilder.updating || this.view.updating),
@@ -245,8 +263,9 @@ export class App extends Widget {
                   this.selectView.graphics.add(this.highlightGraphic);
                   this.elements.selectViewer.style.cursor = "pointer";
                   this.highlightedPointName = graphic.attributes.name;
-                  this.elements.overlayInfo.innerHTML = `<div class="left-info"><p class="title">${graphic.attributes.name}</p></div><div class="separator"></div><div class="right-info"><p>Discovered: ${graphic.attributes.year}</p><p>Depth: ${graphic.attributes.depth}</p><p>${graphic.attributes.ocean}</p></div>`;
+                  this.elements.overlayInfo.innerHTML = `<div class="left-info"><div class="title"><p>${graphic.attributes.name}</p></div><div><p>Discovered: ${graphic.attributes.year}</p><p>Depth: ${graphic.attributes.depth}</p><p>${graphic.attributes.ocean}</p></div></div><div class="separator"></div><div class="right-info"><p>${graphic.attributes.description}</p></div>`;
                   this.elements.overlayInfo.classList.add('fade-in');
+                  setTimeout(() => { document.getElementsByClassName('title')[0].classList.add('big') }, 200);
                 }
               }
             } else {
@@ -262,7 +281,8 @@ export class App extends Widget {
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
-              console.log(results[0].graphic.attributes);
+              const extent = new Extent(extents[results[0].graphic.attributes.name]);
+              this.showDiorama(extent);
             } else {
               console.log("nothing ever happens");
             }
@@ -271,11 +291,9 @@ export class App extends Widget {
       },
       { once: true }
     );
-
   }
 
   private animationFrameTask: __esri.FrameTaskHandle | null = null;
-
 
   private startGlobeAnimation(): void {
     this.elements.selectViewer.classList.add("fade-in");
@@ -306,46 +324,9 @@ export class App extends Widget {
     );
   }
 
-
-  private stopDioramaAnimation(): void {
+  private stopGlobeAnimation() {
     this.animationFrameTask?.remove();
     this.animationFrameTask = null;
-
-    this.elements.dioramaViewer.classList.remove("fade-in");
-  }
-
-  private startDioramaAnimation(): void {
-    this.elements.dioramaViewer.classList.add("fade-in");
-
-    let t = 0;
-    const rotationDurationSeconds = 70;
-
-    const center = this.config.displayArea.center.clone();
-    const { zmin, zmax } = this.dioramaBuilder;
-    center.z = zmin + (zmax - zmin) / 2;
-
-    const update = () => {
-      const heading = 50 - ((360 * (t / 1000 / rotationDurationSeconds)) % 360);
-      this.view.goTo({ target: center, heading, tilt: 73, scale: 800 }, { animate: false });
-    };
-
-    this.animationFrameTask = addFrameTask({
-      update: (ev) => {
-        t += ev?.deltaTime ?? 0;
-        update();
-      }
-    });
-
-    update();
-
-    when(
-      () => this.view.interacting,
-      () => {
-        this.animationFrameTask?.remove();
-        this.animationFrameTask = null;
-      },
-      { once: true }
-    );
   }
 
   private elements = {
@@ -361,8 +342,8 @@ export class App extends Widget {
         <div id="viewer">
           <div id="diorama-viewer" afterCreate={(node: HTMLDivElement) => (this.elements.dioramaViewer = node)}>
             <div id="viewDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreate(node)}></div>
-            <button id="change-area" onclick={() => this.changeArea()}>
-              Change Area
+            <button class="close" onclick={() => this.showGlobe()}>
+              <img src="./assets/close.svg"></img>
             </button>
           </div>
           <div id="select-viewer" afterCreate={(node: HTMLDivElement) => (this.elements.selectViewer = node)}>
@@ -385,32 +366,17 @@ export class App extends Widget {
     this.selectView.map.add(this.pointsLayer);
   }
 
-  private changeArea(): void {
-    // this.stopAnimation();
-
-    // when(
-    //   () => !this.selectView.updating,
-    //   () => {
-    //     this.elements.selectViewer.classList.add("fade-in");
-    //   },
-    //   { once: true }
-    // );
+  private showGlobe(): void {
+    this.elements.dioramaViewer.classList.remove("fade-in");
+    this.elements.selectViewer.classList.add("fade-in");
   }
 
-  private selectArea(): void {
+  private showDiorama(extent: Extent): void {
     this.view.camera = this.initialCamera;
-    this.config.sourceArea = this.selectView.extent.clone();
-
-    // setTimeout(() => {
-    //   when(
-    //     () => !(this.dioramaBuilder.updating || this.view.updating),
-    //     () => {
-    //       this.elements.selectViewer.classList.remove("fade-in");
-    //       this.startAnimation();
-    //     },
-    //     { once: true }
-    //   );
-    // }, 0);
+    this.config.sourceArea = extent;
+    this.stopGlobeAnimation();
+    this.elements.dioramaViewer.classList.add("fade-in");
+    this.elements.selectViewer.classList.remove("fade-in");
   }
 
   private onAfterCreate(element: HTMLDivElement): void {

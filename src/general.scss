@@ -66,6 +66,7 @@ html,
   justify-content: center;
   letter-spacing: 3px;
   font-weight: 500;
+  background: rgba(0, 0, 0, 0.7);
 
   .title {
     text-transform: uppercase;
@@ -73,21 +74,46 @@ html,
     padding: 4px;
   }
 
+  span {
+    color: rgba(252, 186, 3);
+    font-weight: bold;
+  }
+
   .left-info {
-    text-align: right;
-    padding-right: 10px;
+    padding-right: 20px;
     display: flex;
-    justify-content: center;
-    align-items: center;
+    flex-direction: column;
+    width: 200px;
+    text-align: right;
+    .title {
+      width: 0;
+      height: 40px;
+      overflow: hidden;
+      transition: width 500ms;
+      vertical-align: middle;
+      display: flex;
+      align-items: center;
+      p {
+        margin: 0;
+        text-align: right;
+        width: 100%;
+      }
+      &.big {
+        width: 200px;
+      }
+    }
   }
 
   .separator {
     width: 1px;
     background: linear-gradient(transparent, white 25%, white 75%, transparent);
+    margin-top: 50px;
   }
 
   .right-info {
-    padding-left: 10px;
+    padding-left: 20px;
+    max-width: 500px;
+    padding-top: 50px;
   }
 
   &.fade-in {
@@ -102,23 +128,25 @@ html,
 }
 
 button {
-  align-self: center;
-  margin-bottom: 60px;
+  position: absolute;
+  top: 10px;
+  right: 10px;
   border: 0;
-  padding: 24px;
-  background-color: #007ac2;
-  color: var(--calcite-ui-text-inverse);
-  font-size: var(--calcite-font-size-4);
-  border-radius: 24px;
+  padding: 6px;
+  background-color: transparent;
+  width: 30px;
+  height: 30px;
+  transition: all 200ms linear;
 
   &:hover {
-    background: lighten(#007ac2, 5%);
     cursor: pointer;
+    width: 40px;
+    height: 40px;
   }
 }
 
 #viewDiv {
-  flex-grow: 1;
+  height: 100%;
 
   canvas {
     filter: drop-shadow(0px 0px 20px rgba(100, 255, 255, 0.6));
@@ -127,8 +155,6 @@ button {
 
 #diorama-viewer {
   flex-grow: 1;
-  display: flex;
-  flex-direction: column;
   opacity: 0;
 
   &.fade-in {
