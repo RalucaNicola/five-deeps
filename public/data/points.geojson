@@ -35,7 +35,7 @@
         "name": "South Sandwich Trench",
         "depth": 7434,
         "ocean": "Southern Ocean",
-        "description": "The area of the ocean beyond a depth of 6000 meters is called the Hadal zone. The South Sandwich Trench is the only sub-zero temperature Hadal Zone on the planet.",
+        "description": "The area of the ocean beyond a depth of 6,000 meters is called the Hadal zone. The South Sandwich Trench is the only sub-zero temperature Hadal Zone on the planet.",
         "year": 1926
       },
       "geometry": {

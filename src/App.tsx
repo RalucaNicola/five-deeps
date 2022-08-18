@@ -126,23 +126,115 @@ export class App extends Widget {
   });
 
   private labelsLayer = new MediaLayer({
+    source: [
+      new ImageElement({
+        image: "./assets/pacific-ocean.png",
+        georeference: new ExtentAndRotationGeoreference({
+          extent: new Extent({
+            spatialReference: {
+              wkid: 4326
+            },
+            xmin: -179,
+            ymin: 17,
+            xmax: -150,
+            ymax: 23,
+          }),
+          rotation: -3
+        }),
+
+      }),
+      new ImageElement({
+        image: "./assets/arctic-ocean.png",
+        georeference: new ExtentAndRotationGeoreference({
+          extent: new Extent({
+            spatialReference: {
+              wkid: 4326
+            },
+            xmin: 0,
+            ymin: 80,
+            xmax: 40,
+            ymax: 82,
+          }),
+        })
+      }),
+      new ImageElement({
+        image: "./assets/atlantic-ocean.png",
+        georeference: new ExtentAndRotationGeoreference({
+          extent: new Extent({
+            spatialReference: {
+              wkid: 4326
+            },
+            xmin: -56,
+            ymin: 31,
+            xmax: -35,
+            ymax: 34,
+          })
+        })
+      }),
+      new ImageElement({
+        image: "./assets/indian-ocean.png",
+        georeference: new ExtentAndRotationGeoreference({
+          extent: new Extent({
+            spatialReference: {
+              wkid: 4326
+            },
+            xmin: 93,
+            ymin: -18,
+            xmax: 107,
+            ymax: -15,
+          })
+        })
+      }),
+      new ImageElement({
+        image: "./assets/southern-ocean.png",
+        georeference: new ExtentAndRotationGeoreference({
+          extent: new Extent({
+            spatialReference: {
+              wkid: 4326
+            },
+            xmin: -45,
+            ymin: -55,
+            xmax: -15,
+            ymax: -52,
+          })
+        })
+      })
+    ],
+    opacity: 0.8
+  });
+
+  private cloudsLayer = new MediaLayer({
+    // source: [new VideoElement({
+    //   video: "./assets/clouds-animated.mp4",
+    //   georeference: new ExtentAndRotationGeoreference({
+    //     extent: new Extent({
+    //       spatialReference: {
+    //         wkid: 4326
+    //       },
+    //       xmin: -180,
+    //       xmax: 180,
+    //       ymin: -80,
+    //       ymax: 80
+    //     }),
+    //     rotation: 0
+    //   })
+    // })],
     source: [new ImageElement({
-      image: "./assets/pacific-ocean.png",
+      image: "./assets/clouds-nasa.png",
       georeference: new ExtentAndRotationGeoreference({
         extent: new Extent({
           spatialReference: {
             wkid: 4326
           },
-          xmin: -179,
-          ymin: 17,
-          xmax: -150,
-          ymax: 23,
+          xmin: -180,
+          xmax: 180,
+          ymin: -80,
+          ymax: 80
         }),
-        rotation: -5
+        rotation: 0
       })
     })],
-    opacity: 0.8
-  })
+  });
 
   private selectView = new SceneView({
     map: new Map({
@@ -161,41 +253,8 @@ export class App extends Widget {
         ]
       }),
       layers: [
-        this.labelsLayer,
-        new MediaLayer({
-          // source: [new VideoElement({
-          //   video: "./assets/clouds-animated.mp4",
-          //   georeference: new ExtentAndRotationGeoreference({
-          //     extent: new Extent({
-          //       spatialReference: {
-          //         wkid: 4326
-          //       },
-          //       xmin: -180,
-          //       xmax: 180,
-          //       ymin: -80,
-          //       ymax: 80
-          //     }),
-          //     rotation: 0
-          //   })
-          // })],
-          // blendMode: "multiply"
-          // opacity: 0.3
-          source: [new ImageElement({
-            image: "./assets/clouds-nasa.png",
-            georeference: new ExtentAndRotationGeoreference({
-              extent: new Extent({
-                spatialReference: {
-                  wkid: 4326
-                },
-                xmin: -180,
-                xmax: 180,
-                ymin: -80,
-                ymax: 80
-              }),
-              rotation: 0
-            })
-          })],
-        })
+        this.cloudsLayer,
+        this.labelsLayer
       ]
     }),
     ui: { components: [] },
@@ -246,11 +305,6 @@ export class App extends Widget {
   private selected = false;
 
   protected initialize(): void {
-    // when(
-    //   () => !(this.dioramaBuilder.updating || this.view.updating),
-    //   () => this.startDioramaAnimation(),
-    //   { once: true }
-    // );
 
     when(
       () => !this.selectView.updating,
@@ -294,6 +348,13 @@ export class App extends Widget {
       },
       { once: true }
     );
+
+    when(() => Math.floor(this.selectView.zoom),
+      (value) => {
+        if (value) {
+          this.cloudsLayer.opacity = 0.02 * Math.pow(value - 10, 2);
+        }
+      });
   }
 
   private animationFrameTask: __esri.FrameTaskHandle | null = null;
@@ -376,6 +437,7 @@ export class App extends Widget {
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
         </div>
+        <div class="about"> Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a> | Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">map</a>.</div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
         </div>
@@ -384,7 +446,8 @@ export class App extends Widget {
           <p>Over 80% of the ocean remains uncharted and unexplored. The United Nations' Seabed 2030 project aims to map the entirety of the ocean floor by the end of this decade.</p>
           <button class="intro-button" onclick={() => this.hideIntro()}>Explore the deepest point in each of Earth's oceans</button>
         </div>
-        <h1 class="app-title" afterCreate={(node: HTMLDivElement) => (this.elements.appTitle = node)}>THE FIVE DEEPS</h1>
+        <h1 class="app-title" afterCreate={(node: HTMLTitleElement) => (this.elements.appTitle = node)}>THE FIVE DEEPS</h1>
+
       </div>
     );
   }

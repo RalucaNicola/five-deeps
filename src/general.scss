@@ -55,6 +55,24 @@ html,
   }
 }
 
+.about {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  right: 10px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.75rem;
+
+  a {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: bold;
+    text-decoration: none;
+    &:hover {
+      color: white;
+    }
+  }
+}
+
 .overlay-info {
   opacity: 1;
   position: absolute;
@@ -65,7 +83,8 @@ html,
   pointer-events: none;
   color: white;
   font-weight: 500;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.9);
+  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 1));
 
   .container {
     display: flex;
@@ -173,6 +192,7 @@ html,
   font-size: 1.7rem;
   transition: opacity 200ms linear;
   opacity: 0;
+  text-shadow: 0 0 5px black;
 
   &.fade-in {
     opacity: 1;
