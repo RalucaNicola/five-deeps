@@ -335,6 +335,7 @@ export class App extends Widget {
     dioramaViewer: null! as HTMLDivElement,
     intro: null! as HTMLDivElement,
     overlayInfo: null! as HTMLDivElement,
+    appTitle: null! as HTMLTitleElement
   };
 
   render() {
@@ -372,21 +373,23 @@ export class App extends Widget {
           <div id="select-viewer" afterCreate={(node: HTMLDivElement) => (this.elements.selectViewer = node)}>
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
-
         </div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
         </div>
-        <div class="intro" afterCreate={(node: HTMLDivElement) => (this.elements.intro = node)} onclick={() => this.hideIntro()}>
+        <div class="intro" afterCreate={(node: HTMLDivElement) => (this.elements.intro = node)}>
           <h1>THE FIVE DEEPS</h1>
-          <p>The deepest point in each of Earth's oceans</p>
+          <p>Over 80% of the ocean remains uncharted and unexplored. The United Nations' Seabed 2030 project aims to map the entirety of the ocean floor by the end of this decade.</p>
+          <button class="intro-button" onclick={() => this.hideIntro()}>Explore the deepest point in each of Earth's oceans</button>
         </div>
+        <h1 class="app-title" afterCreate={(node: HTMLDivElement) => (this.elements.appTitle = node)}>THE FIVE DEEPS</h1>
       </div>
     );
   }
 
   private hideIntro(): void {
     this.elements.intro.classList.add('fade-out');
+    this.elements.appTitle.classList.add('fade-in');
     this.selectView.map.add(this.pointsLayer);
   }
 
