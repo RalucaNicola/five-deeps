@@ -37,6 +37,8 @@ import { extents } from './extents';
 
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
+const color = [255, 255, 255];
+
 @subclass("App")
 export class App extends Widget {
   private config = new Configuration();
@@ -108,10 +110,10 @@ export class App extends Widget {
         symbol: new LabelSymbol3D({
           symbolLayers: [new TextSymbol3DLayer({
             material: {
-              color: [255, 255, 255]
+              color: [50, 50, 50]
             },
 
-            background: { color: [252, 186, 3] },
+            background: { color: color },
             font: {
               size: 12,
               family: `"Avenir Next", "Avenir", "Helvetica Neue", sans-serif`,
@@ -211,7 +213,7 @@ export class App extends Widget {
           color: [0, 0, 0, 0]
         },
         outline: {
-          color: [252, 186, 3],
+          color: color,
           size: 2
         }
       }), new IconSymbol3DLayer({
@@ -221,7 +223,7 @@ export class App extends Widget {
           color: [0, 0, 0, 0]
         },
         outline: {
-          color: [252, 186, 3, 0.7],
+          color: [...color, 0.7],
           size: 2
         }
       }), new IconSymbol3DLayer({
@@ -231,7 +233,7 @@ export class App extends Widget {
           color: [0, 0, 0, 0]
         },
         outline: {
-          color: [252, 186, 3, 0.4],
+          color: [...color, 0.4],
           size: 2
         }
       })]
@@ -350,7 +352,7 @@ export class App extends Widget {
           </div>
           <div class="info">
             <p>Discovered in {this.highlightedPoint.year}</p>
-            <p>{this.highlightedPoint.depth} m deep</p>
+            <p>{formatNumber(this.highlightedPoint.depth)} m deep</p>
             <p>{this.highlightedPoint.ocean}</p>
           </div>
         </div>
@@ -419,6 +421,10 @@ export class App extends Widget {
 
   }
 }
+
+const formatNumber = (number: number): string => {
+  return new Intl.NumberFormat("en-US").format(number);
+};
 
 interface OceanPoint {
   name: string;
