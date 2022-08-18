@@ -1,4 +1,4 @@
-import { subclass } from "@arcgis/core/core/accessorSupport/decorators";
+import { property, subclass } from "@arcgis/core/core/accessorSupport/decorators";
 import Widget from "@arcgis/core/widgets/Widget";
 import { tsx } from "@arcgis/core/widgets/support/widget";
 import SceneView from "@arcgis/core/views/SceneView";
@@ -238,7 +238,10 @@ export class App extends Widget {
     })
   });
 
-  private highlightedPointName: string | null = null;
+  @property()
+  private highlightedPoint: OceanPoint | null = null;
+
+  private selected = false;
 
   protected initialize(): void {
     // when(
@@ -257,36 +260,34 @@ export class App extends Widget {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
               const graphic = results[0].graphic;
-              if (graphic) {
-                if (this.highlightedPointName !== graphic.attributes.name) {
-                  this.highlightGraphic.geometry = graphic.geometry;
-                  this.selectView.graphics.add(this.highlightGraphic);
-                  this.elements.selectViewer.style.cursor = "pointer";
-                  this.highlightedPointName = graphic.attributes.name;
-                  this.elements.overlayInfo.innerHTML = `<div class="left-info"><div class="title"><p>${graphic.attributes.name}</p></div><div><p>Discovered: ${graphic.attributes.year}</p><p>Depth: ${graphic.attributes.depth}</p><p>${graphic.attributes.ocean}</p></div></div><div class="separator"></div><div class="right-info"><p>${graphic.attributes.description}</p></div>`;
-                  this.elements.overlayInfo.classList.add('fade-in');
-                  setTimeout(() => { document.getElementsByClassName('title')[0].classList.add('big') }, 200);
-                }
+              if (!this.highlightedPoint || this.highlightedPoint.name !== graphic.attributes.name) {
+                this.highlightGraphic.geometry = graphic.geometry;
+                this.selectView.graphics.add(this.highlightGraphic);
+                this.elements.selectViewer.style.cursor = "pointer";
+                this.highlightedPoint = graphic.attributes;
+                this.elements.overlayInfo.classList.add('fade-in');
               }
             } else {
               this.selectView.graphics.removeAll();
               this.elements.selectViewer.style.cursor = "default";
-              this.highlightedPointName = null;
+              this.highlightedPoint = null;
               this.elements.overlayInfo.innerHTML = ``;
               this.elements.overlayInfo.classList.remove('fade-in');
             }
-          });
+          }).catch(console.error);
         });
         this.selectView.on('click', (event) => {
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
-              const extent = new Extent(extents[results[0].graphic.attributes.name]);
+              const graphic = results[0].graphic;
+              const extent = new Extent(extents[graphic.attributes.name]);
+              this.highlightedPoint = graphic.attributes;
               this.showDiorama(extent);
-            } else {
-              console.log("nothing ever happens");
+              this.selected = true;
+              this.elements.overlayInfo.classList.add('fade-in');
             }
-          });
+          }).catch(console.error);
         })
       },
       { once: true }
@@ -333,10 +334,32 @@ export class App extends Widget {
     selectViewer: null! as HTMLDivElement,
     dioramaViewer: null! as HTMLDivElement,
     intro: null! as HTMLDivElement,
-    overlayInfo: null! as HTMLDivElement
+    overlayInfo: null! as HTMLDivElement,
   };
 
   render() {
+    const overlayInfoContainer = this.highlightedPoint ? (
+      <div class="container">
+        <div class="left-info">
+          <div class="title" afterCreate={(node: HTMLDivElement) => (
+            this.selected ?
+              node.classList.add('big') : setTimeout(() => node.classList.add('big'), 0)
+          )}>
+            <p>{this.highlightedPoint.name}</p>
+          </div>
+          <div class="info">
+            <p>Discovered in {this.highlightedPoint.year}</p>
+            <p>{this.highlightedPoint.depth} m deep</p>
+            <p>{this.highlightedPoint.ocean}</p>
+          </div>
+        </div>
+        <div class="separator"></div>
+        <div class="right-info">
+          <p>{this.highlightedPoint.description}</p>
+        </div>
+      </div >
+    ) : null;
+
     return (
       <div id="main">
         <div id="viewer">
@@ -352,6 +375,7 @@ export class App extends Widget {
 
         </div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
+          {overlayInfoContainer}
         </div>
         <div class="intro" afterCreate={(node: HTMLDivElement) => (this.elements.intro = node)} onclick={() => this.hideIntro()}>
           <h1>THE FIVE DEEPS</h1>
@@ -369,6 +393,8 @@ export class App extends Widget {
   private showGlobe(): void {
     this.elements.dioramaViewer.classList.remove("fade-in");
     this.elements.selectViewer.classList.add("fade-in");
+    this.highlightedPoint = null;
+    this.selected = false;
   }
 
   private showDiorama(extent: Extent): void {
@@ -389,4 +415,12 @@ export class App extends Widget {
     (window as any).selectView = this.selectView;
 
   }
+}
+
+interface OceanPoint {
+  name: string;
+  year: number;
+  depth: number;
+  ocean: string;
+  description: string;
 }

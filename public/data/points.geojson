@@ -7,7 +7,7 @@
         "name": "Java Trench",
         "depth": 7192,
         "ocean": "Indian Ocean",
-        "description": "The Java Trench was formed by <span>subduction</span>, or one tectonic plate pushing another. Subduction can create trenches, mountains, or island arcs, and often causes seismic and volcanic activity.",
+        "description": "The Java Trench was formed by subduction, or one tectonic plate pushing another. Subduction can create trenches, mountains, or island arcs, and often causes seismic and volcanic activity.",
         "year": 1958
       },
       "geometry": {
@@ -21,7 +21,7 @@
         "name": "Molloy Hole",
         "depth": 5550,
         "ocean": "Arctic Ocean",
-        "description": "Trenches are depths of over 6,000 meters, which is why the Molloy Hole is not a trench. The Molloy Hole was formed by <span>seafloor spreading</span>, or tectonic plates moving away from each other.",
+        "description": "Trenches are depths of over 6,000 meters, which is why the Molloy Hole is not a trench. The Molloy Hole was formed by seafloor spreading, or tectonic plates moving away from each other.",
         "year": 1972
       },
       "geometry": {
@@ -35,7 +35,7 @@
         "name": "South Sandwich Trench",
         "depth": 7434,
         "ocean": "Southern Ocean",
-        "description": "The area of the ocean beyond a depth of 6000 meters is called the <span>Hadal zone</span>. The South Sandwich Trench is the only sub-zero temperature Hadal Zone on the planet.",
+        "description": "The area of the ocean beyond a depth of 6000 meters is called the Hadal zone. The South Sandwich Trench is the only sub-zero temperature Hadal Zone on the planet.",
         "year": 1926
       },
       "geometry": {
