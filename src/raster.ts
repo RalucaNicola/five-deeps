@@ -1,5 +1,4 @@
 import Extent from "@arcgis/core/geometry/Extent";
-import { sampleElevation } from "./sampling";
 
 export function computeHillshade(sample: SanmplingFunction, settings: HillshadeSettings): Uint8ClampedArray {
   const context = hillshadeSettingsToContext(settings);

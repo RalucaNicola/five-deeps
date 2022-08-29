@@ -64,11 +64,11 @@ html,
   font-size: 0.75rem;
 
   a {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(255, 255, 255, 1);
     font-weight: bold;
     text-decoration: none;
     &:hover {
-      color: white;
+      border-bottom: 1px solid white;
     }
   }
 }
@@ -158,6 +158,7 @@ html,
   width: 30px;
   height: 30px;
   transition: all 200ms linear;
+  pointer-events: all;
 
   &:hover {
     cursor: pointer;
@@ -186,13 +187,44 @@ html,
   position: absolute;
   top: 10px;
   left: 20px;
-  font-weight: 100;
   margin: 0;
   color: white;
-  font-size: 1.7rem;
   transition: opacity 200ms linear;
   opacity: 0;
   text-shadow: 0 0 5px black;
+
+  h1 {
+    font-weight: 100;
+    font-size: 1.7rem;
+  }
+
+  button {
+    font-family: "Avenir Next", "Avenir", "Helvetica Neue", sans-serif;
+    font-size: 0.9rem;
+    margin: 4px;
+    background-color: rgba(50, 50, 50, 0.4);
+    padding: 4px 8px;
+    display: inline;
+    border: none;
+    color: white;
+    border-left: 3px solid white;
+    transition: background-color 200ms linear, color 200ms linear;
+    font-weight: bold;
+  }
+
+  button:hover {
+    background-color: white;
+    cursor: pointer;
+    color: rgb(50, 50, 50);
+    text-shadow: none;
+  }
+
+  .point-list {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: flex-start;
+  }
 
   &.fade-in {
     opacity: 1;
@@ -299,6 +331,15 @@ html,
 
     &.fade-in {
       opacity: 1;
+    }
+  }
+
+  .app-title {
+    right: 20px;
+
+    .point-list {
+      flex-direction: row;
+      align-items: flex-start;
     }
   }
 }

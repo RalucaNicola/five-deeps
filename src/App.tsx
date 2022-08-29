@@ -125,100 +125,7 @@ export class App extends Widget {
     ]
   });
 
-  private labelsLayer = new MediaLayer({
-    source: [
-      new ImageElement({
-        image: "./assets/pacific-ocean.png",
-        georeference: new ExtentAndRotationGeoreference({
-          extent: new Extent({
-            spatialReference: {
-              wkid: 4326
-            },
-            xmin: -179,
-            ymin: 17,
-            xmax: -150,
-            ymax: 23,
-          }),
-          rotation: -3
-        }),
-
-      }),
-      new ImageElement({
-        image: "./assets/arctic-ocean.png",
-        georeference: new ExtentAndRotationGeoreference({
-          extent: new Extent({
-            spatialReference: {
-              wkid: 4326
-            },
-            xmin: 0,
-            ymin: 80,
-            xmax: 40,
-            ymax: 82,
-          }),
-        })
-      }),
-      new ImageElement({
-        image: "./assets/atlantic-ocean.png",
-        georeference: new ExtentAndRotationGeoreference({
-          extent: new Extent({
-            spatialReference: {
-              wkid: 4326
-            },
-            xmin: -56,
-            ymin: 31,
-            xmax: -35,
-            ymax: 34,
-          })
-        })
-      }),
-      new ImageElement({
-        image: "./assets/indian-ocean.png",
-        georeference: new ExtentAndRotationGeoreference({
-          extent: new Extent({
-            spatialReference: {
-              wkid: 4326
-            },
-            xmin: 93,
-            ymin: -18,
-            xmax: 107,
-            ymax: -15,
-          })
-        })
-      }),
-      new ImageElement({
-        image: "./assets/southern-ocean.png",
-        georeference: new ExtentAndRotationGeoreference({
-          extent: new Extent({
-            spatialReference: {
-              wkid: 4326
-            },
-            xmin: -45,
-            ymin: -55,
-            xmax: -15,
-            ymax: -52,
-          })
-        })
-      })
-    ],
-    opacity: 0.8
-  });
-
   private cloudsLayer = new MediaLayer({
-    // source: [new VideoElement({
-    //   video: "./assets/clouds-animated.mp4",
-    //   georeference: new ExtentAndRotationGeoreference({
-    //     extent: new Extent({
-    //       spatialReference: {
-    //         wkid: 4326
-    //       },
-    //       xmin: -180,
-    //       xmax: 180,
-    //       ymin: -80,
-    //       ymax: 80
-    //     }),
-    //     rotation: 0
-    //   })
-    // })],
     source: [new ImageElement({
       image: "./assets/clouds-nasa.png",
       georeference: new ExtentAndRotationGeoreference({
@@ -236,26 +143,29 @@ export class App extends Widget {
     })],
   });
 
+  private highlightGraphicsLayer = new GraphicsLayer({
+  });
+
   private selectView = new SceneView({
     map: new Map({
       ground: new Ground({
         layers: [new ElevationLayer({
           url: "https://elevation3d.arcgis.com/arcgis/rest/services/WorldElevation3D/TopoBathy3D/ImageServer"
         })],
-        surfaceColor: [144, 198, 222]
+        surfaceColor: [255, 255, 255]
       }),
       basemap: new Basemap({
         baseLayers: [
           new TileLayer({
-            url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer",
-            opacity: 0.8
+            url: "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer", opacity: 0.7
+          }),
+          new TileLayer({
+            url: "https://tiles.arcgis.com/tiles/C8EMgrsFcRFL6LrL/arcgis/rest/services/GEBCO_basemap_NCEI/MapServer",
+            blendMode: "multiply"
           }),
         ]
       }),
-      layers: [
-        this.cloudsLayer,
-        this.labelsLayer
-      ]
+      layers: [this.cloudsLayer, this.highlightGraphicsLayer]
     }),
     ui: { components: [] },
     qualityProfile: "high"
@@ -315,7 +225,7 @@ export class App extends Widget {
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
-              const graphic = results[0].graphic;
+              const graphic = (results[0] as GraphicHit).graphic;
               if (!this.highlightedPoint || this.highlightedPoint.name !== graphic.attributes.name) {
                 this.highlightGraphic.geometry = graphic.geometry;
                 this.selectView.graphics.add(this.highlightGraphic);
@@ -339,7 +249,7 @@ export class App extends Widget {
           this.selectView.hitTest(event, { include: this.pointsLayer }).then(hitTestResult => {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
-              const graphic = results[0].graphic;
+              const graphic = (results[0] as GraphicHit).graphic;
               const extent = new Extent(extents[graphic.attributes.name]);
               this.highlightedPoint = graphic.attributes;
               this.showDiorama(extent);
@@ -366,7 +276,7 @@ export class App extends Widget {
     this.elements.selectViewer.classList.add("fade-in");
 
     let t = 0;
-    const rotationDurationSeconds = 30;
+    const rotationDurationSeconds = 100;
 
     const update = () => {
       const camera = this.selectView.camera.clone();
@@ -384,8 +294,7 @@ export class App extends Widget {
     when(
       () => this.selectView.interacting,
       () => {
-        this.animationFrameTask?.remove();
-        this.animationFrameTask = null;
+        this.stopGlobeAnimation()
       },
       { once: true }
     );
@@ -440,7 +349,7 @@ export class App extends Widget {
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
         </div>
-        <div class="about"> Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a> | Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">map</a>.</div>
+        <div class="about"> Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
         </div>
@@ -449,10 +358,57 @@ export class App extends Widget {
           <p>Over 80% of the ocean remains uncharted and unexplored. The United Nations' Seabed 2030 project aims to map the entirety of the ocean floor by the end of this decade.</p>
           <button class="intro-button" onclick={() => this.hideIntro()}>Explore the deepest point in each of Earth's oceans</button>
         </div>
-        <h1 class="app-title" afterCreate={(node: HTMLTitleElement) => (this.elements.appTitle = node)}>THE FIVE DEEPS</h1>
+        <div class="app-title" afterCreate={(node: HTMLTitleElement) => (this.elements.appTitle = node)}>
+          <h1>THE FIVE DEEPS</h1>
+          <div class="point-list">
+            <button onclick={(evt: PointerEvent) => this.goTo(evt)}>South Sandwich Trench</button>
+            <button onclick={(evt: PointerEvent) => this.goTo(evt)}>Puerto Rico Trench</button>
+            <button onclick={(evt: PointerEvent) => this.goTo(evt)}>Mariana Trench</button>
+            <button onclick={(evt: PointerEvent) => this.goTo(evt)}>Molloy Hole</button>
+            <button onclick={(evt: PointerEvent) => this.goTo(evt)}>Java Trench</button>
+          </div>
+        </div>
 
       </div>
     );
+  }
+
+  private animateGraphicOpacity(graphic: Graphic) {
+    this.highlightGraphicsLayer.opacity = 0;
+    this.highlightGraphicsLayer.add(graphic);
+    let increment = 0.1;
+    const animateOpacity = (opacity: number) => {
+      console.log(opacity);
+      this.highlightGraphicsLayer.opacity = Math.max(Math.min(opacity, 1), 0);
+      if (opacity > 1) {
+        window.setTimeout(() => {
+          increment = -0.1;
+        }, 100);
+      }
+      if (opacity >= 0) {
+        requestAnimationFrame(() => { animateOpacity(opacity + increment) });
+      }
+    }
+    animateOpacity(0);
+
+  }
+
+  private goTo(evt: PointerEvent): void {
+    if (evt.target && evt.target instanceof HTMLButtonElement) {
+      const name = evt.target.innerHTML;
+      this.pointsLayer.queryFeatures({ where: `name='${name}'`, returnGeometry: true })
+        .then(result => {
+          if (this.animationFrameTask) {
+            this.stopGlobeAnimation();
+          }
+          this.selectView.goTo({ target: result.features[0].geometry, zoom: 4 })
+            .then(() => {
+              this.highlightGraphic.geometry = result.features[0].geometry;
+              this.animateGraphicOpacity(this.highlightGraphic);
+            })
+        });
+    }
+
   }
 
   private hideIntro(): void {
@@ -464,6 +420,7 @@ export class App extends Widget {
   private showGlobe(): void {
     this.elements.dioramaViewer.classList.remove("fade-in");
     this.elements.selectViewer.classList.add("fade-in");
+    this.elements.appTitle.style.display = "revert";
     this.highlightedPoint = null;
     this.selected = false;
   }
@@ -474,6 +431,7 @@ export class App extends Widget {
     this.stopGlobeAnimation();
     this.elements.dioramaViewer.classList.add("fade-in");
     this.elements.selectViewer.classList.remove("fade-in");
+    this.elements.appTitle.style.display = "none";
   }
 
   private onAfterCreate(element: HTMLDivElement): void {
@@ -498,4 +456,8 @@ interface OceanPoint {
   depth: number;
   ocean: string;
   description: string;
+}
+
+interface GraphicHit {
+  graphic: Graphic;
 }
