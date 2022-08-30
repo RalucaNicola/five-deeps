@@ -33,7 +33,7 @@ import { SimpleRenderer } from "@arcgis/core/renderers";
 import { IconSymbol3DLayer, PointSymbol3D } from "@arcgis/core/symbols";
 import Graphic from "@arcgis/core/Graphic";
 
-import { extents } from './extents';
+import { viewpoints } from './viewpoints';
 import Home from "@arcgis/core/widgets/Home";
 import Viewpoint from "@arcgis/core/Viewpoint";
 
@@ -245,9 +245,10 @@ export class App extends Widget {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
               const graphic = (results[0] as GraphicHit).graphic;
-              const extent = new Extent(extents[graphic.attributes.name]);
+              const extent = new Extent(viewpoints[graphic.attributes.name].extent);
               this.highlightedPoint = graphic.attributes;
               this.showDiorama(extent);
+              this.view.goTo(viewpoints[graphic.attributes.name].camera);
               this.selected = true;
               this.elements.overlayInfo.classList.add('fade-in');
             }
@@ -270,7 +271,6 @@ export class App extends Widget {
     });
 
     this.view.ui.add(homeWidget, "top-left");
-    (this.view as any).basemapTerrain.suspended = true;
   }
 
   private animationFrameTask: __esri.FrameTaskHandle | null = null;
