@@ -1,8 +1,6 @@
 import Color from "@arcgis/core/Color";
 import Accessor from "@arcgis/core/core/Accessor";
 import { property, subclass } from "@arcgis/core/core/accessorSupport/decorators";
-import Handles from "@arcgis/core/core/Handles";
-import { watch } from "@arcgis/core/core/reactiveUtils";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference";
 import Mesh from "@arcgis/core/geometry/Mesh";
 import MeshComponent from "@arcgis/core/geometry/support/MeshComponent";
@@ -28,6 +26,8 @@ import Polygon from "@arcgis/core/geometry/Polygon";
 import PolygonSymbol3D from "@arcgis/core/symbols/PolygonSymbol3D";
 import WaterSymbol3DLayer from "@arcgis/core/symbols/WaterSymbol3DLayer";
 import caustics from "./images/caustics.png";
+import Extent from "@arcgis/core/geometry/Extent";
+import { textChangeRangeIsUnchanged } from "typescript";
 
 @subclass("DioramaBuilder")
 export class DioramaBuilder extends Accessor implements ConstructProperties {
@@ -73,69 +73,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   @property()
-  get terrainColorTexture(): MeshTexture | null {
-    return this.createTerrainColorTexture();
-  }
-
-  @property()
-  get terrainNormalsTexture(): MeshTexture | null {
-    return this.createTerrainNormalsTexture();
-  }
-
-  @property()
-  get terrainVisualizationParams(): TerrainVisualizationParams {
-    if (this.config.shadingMode === "normals") {
-      return {
-        shadingMode: "normals",
-        mesh: this.elevationSurfaceMesh,
-        colorTexture: this.terrainColorTexture,
-        normalTexture: this.terrainNormalsTexture
-      };
-    }
-
-    return {
-      shadingMode: this.config.shadingMode,
-      mesh: this.elevationSurfaceMesh,
-      colorTexture: this.terrainColorTexture
-    };
-  }
-
-  @property()
-  get cachedElevationSampleFunction(): SanmplingFunction | null {
-    if (!this.sampler) {
-      return null;
-    }
-
-    const size = this.config.colorTextureResolution;
-    const samples = new Float64Array(size * size);
-
-    const { xmin, ymin, width, height } = this.config.sourceArea;
-
-    let py = ymin;
-    let ptr = 0;
-
-    const dx = width / size;
-    const dy = height / size;
-
-    for (let y = 0; y < size; y++) {
-      let px = xmin;
-
-      for (let x = 0; x < size; x++) {
-        samples[ptr++] = this.sampler.sampler.elevationAt(px, py);
-        px += dx;
-      }
-
-      py += dy;
-    }
-
-    return (px, py, pdx, pdy): number => {
-      const x = Math.min(Math.max(px + pdx, 0), size - 1);
-      const y = Math.min(Math.max(py + pdy, 0), size - 1);
-      return samples[y * size + x];
-    };
-  }
-
-  @property()
   get terrainColorTextureCanvas(): HTMLCanvasElement {
     return document.createElement("canvas");
   }
@@ -151,29 +88,13 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   @property()
-  get terrainSurfaceVertexResolution(): TerrainSurfaceVertexResolution {
-    const { sourceArea, elevationMeshResolutionPixels } = this.config;
-    const demResolution = Math.max(sourceArea.width, sourceArea.height) / elevationMeshResolutionPixels;
-    const width = Math.ceil(sourceArea.width / demResolution);
-    const height = Math.ceil(sourceArea.height / demResolution);
-
-    return { width, height, demResolution };
-  }
-
-  @property()
   get topSurfaceZ(): number {
     return this.config.displayArea.height * 0.65;
   }
 
   @property()
   get topSurfaceSampler(): TopSurfaceSampler | null {
-    return this.sampler ? this.waterSurfaceSampler : this.groundSurfaceSampler;
-  }
-
-  @property()
-  get groundSurfaceSampler(): TopSurfaceSampler | null {
-    const z = this.topSurfaceZ;
-    return () => z;
+    return this.waterSurfaceSampler;
   }
 
   @property()
@@ -211,7 +132,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     return drawGlassGradient(canvas.getContext("2d")!, glassTextureResolution, glassTextureResolution);
   }
 
-  private handles = new Handles();
   private causticsImage: HTMLImageElement;
 
   constructor(props: ConstructProperties) {
@@ -221,13 +141,29 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     this.causticsImage.decode();
   }
 
-  destroy(): void {
-    this.handles.destroy();
+  destroyDiorama(): void {
+    this.sampler = null;
+    if (this.elevationSurfaceGraphic) {
+      this.layer.remove(this.elevationSurfaceGraphic);
+      this.elevationSurfaceGraphic.destroy();
+      this.elevationSurfaceGraphic = null;
+    }
+    if (this.surfaceBoxGraphic) {
+      this.layer.remove(this.surfaceBoxGraphic);
+      this.surfaceBoxGraphic.destroy();
+      this.surfaceBoxGraphic = null;
+    }
+    if (this.glassBoxGraphic) {
+      this.layer.remove(this.glassBoxGraphic);
+      this.glassBoxGraphic = null;
+    }
+    if (this.topSurfaceGraphic) {
+      this.layer.remove(this.topSurfaceGraphic);
+      this.topSurfaceGraphic = null;
+    }
   }
 
-  protected initialize(): void {
-    this.view.map.add(this.layer);
-
+  generateDiorama(sourceArea: Extent): void {
     const wrapUpdating = <T>(promise: Promise<T>): Promise<T> => {
       this.numUpdating++;
       promise.finally(() => this.numUpdating--);
@@ -245,97 +181,56 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
         return params ? wrapUpdating(this.recreateElevationMesh(signal, params)) : null;
       }
     );
-
-    this.handles.add([
-      watch(
-        () => ({ sourceArea: this.config.sourceArea, samplingResolutionPixels: this.config.samplingResolutionPixels }),
-        restartingRecreateSampler,
-        { initial: true }
-      ),
-      watch(
-        () => ({
-          sampler: this.sampler,
-          sourceArea: this.config.sourceArea,
-          terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution,
-          displayArea: this.config.displayArea
-        }),
-        restartingRecreateElevationMesh
-      ),
-      watch(
-        () => this.config.displayArea,
-        (area) => (this.view.clippingArea = area!),
-        { initial: true }
-      ),
-      watch(
-        () => ({
+    restartingRecreateSampler({
+      sourceArea,
+      samplingResolutionPixels: this.config.samplingResolutionPixels
+    }).then(() => {
+      restartingRecreateElevationMesh({
+        sampler: this.sampler,
+        sourceArea,
+        terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution(sourceArea),
+        displayArea: this.config.displayArea
+      }).then(() => {
+        this.updateMeshVisualization({
+          visualizationParams: this.terrainVisualizationParams(sourceArea),
+          graphic: this.elevationSurfaceGraphic
+        });
+        this.recreateSurfaceBoxMesh({
           zmin: this.zmin,
           zmax: this.zmax,
+          surfacePaddingBottom: this.config.surfacePaddingBottom,
+          terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution(sourceArea),
+          sourceArea,
           displayArea: this.config.displayArea,
-          sourceArea: this.config.sourceArea,
-          terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution,
-          sampler: this.sampler,
-          surfacePaddingBottom: this.config.surfacePaddingBottom
-        }),
-        (params) => {
-          if (params) {
-            this.recreateSurfaceBoxMesh(params);
-          }
-        }
-      ),
-      watch(
-        () => ({
-          visualizationParams: this.terrainVisualizationParams,
-          graphic: this.elevationSurfaceGraphic
-        }),
-        (params) => {
-          if (params) {
-            this.updateMeshVisualization(params);
-          }
-        }
-      ),
-      watch(
-        () => ({
+          sampler: this.sampler
+        });
+        this.recreateGlassBox({
           displayArea: this.config.displayArea,
-          sourceArea: this.config.sourceArea,
+          sourceArea,
           glassTextureResolution: this.config.glassTextureResolution,
           sampler: this.sampler,
-          terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution,
+          terrainSurfaceVertexResolution: this.terrainSurfaceVertexResolution(sourceArea),
           glassGradientImageData: this.glassGradientImageData,
           topSurfaceSampler: this.topSurfaceSampler
-        }),
-        (params) => {
-          if (params) {
-            this.recreateGlassBox(params);
-          }
-        }
-      ),
-      watch(
-        (): RecreateTopSurfaceParams => ({
+        });
+        this.recreateWaterSurface({
           displayArea: this.config.displayArea,
           topSurfaceSampler: this.topSurfaceSampler,
           waterSurfaceResolution: this.config.waterSurfaceResolution,
           glassGradientImageData: this.glassGradientImageData
-        }),
-        (params) => {
-          if (params) {
-            if (params.topSurfaceSampler === this.groundSurfaceSampler) {
-              this.recreateGlassTopSurface(params);
-            } else {
-              this.recreateWaterSurface(params);
-            }
-          }
-        },
-        { initial: true }
-      )
-    ]);
+        });
+      });
+    });
+  }
+
+  protected initialize(): void {
+    this.view.map.add(this.layer);
   }
 
   private async recreateSampler(
     signal: AbortSignal,
     { sourceArea: area, samplingResolutionPixels }: RecreateSamplerParams
   ): Promise<void> {
-    this.sampler = null;
-
     const demResolution = Math.max(area.width, area.height) / samplingResolutionPixels;
 
     const layer = new ElevationLayer({
@@ -348,12 +243,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   private async recreateElevationMesh(signal: AbortSignal, params: RecreateElevationMeshParams): Promise<void> {
-    if (this.elevationSurfaceGraphic) {
-      this.layer.remove(this.elevationSurfaceGraphic);
-      this.elevationSurfaceGraphic.destroy();
-      this.elevationSurfaceGraphic = null;
-    }
-
     this.elevationSurfaceMesh = null;
     const {
       sampler,
@@ -431,14 +320,13 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     mesh.vertexAttributesChanged();
   }
 
-  private createTerrainColorTexture(): MeshTexture | null {
+  private createTerrainColorTexture(sourceArea: Extent): MeshTexture | null {
     const sampler = this.sampler;
-
     if (!sampler) {
       return null;
     }
 
-    const { colorTextureResolution: size, sourceArea, colorRamp, terrainColorSaturation } = this.config;
+    const { colorTextureResolution: size, colorRamp, terrainColorSaturation } = this.config;
 
     const imageData = new ImageData(size, size);
     let ptr = 0;
@@ -478,10 +366,11 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
     ctx.save();
 
-    if ((shadingMode === "hillshade" || shadingMode === "multi-hillshade") && this.cachedElevationSampleFunction) {
-      const { sourceArea, hillshadeStretchStddev } = this.config;
+    const samplingFunction = this.cachedElevationSampleFunction(sourceArea);
+    if ((shadingMode === "hillshade" || shadingMode === "multi-hillshade") && samplingFunction) {
+      const { hillshadeStretchStddev } = this.config;
 
-      const hillshade = computeHillshade(this.cachedElevationSampleFunction, {
+      const hillshade = computeHillshade(samplingFunction, {
         extent: sourceArea,
         width: size,
         height: size,
@@ -512,20 +401,46 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     return new MeshTexture({ data: ctx.getImageData(0, 0, size, size) });
   }
 
-  private createTerrainNormalsTexture(): MeshTexture | null {
-    if (this.config.shadingMode !== "normals" || !this.cachedElevationSampleFunction) {
+  private terrainVisualizationParams(sourceArea: Extent): TerrainVisualizationParams {
+    return {
+      shadingMode: this.config.shadingMode,
+      mesh: this.elevationSurfaceMesh,
+      colorTexture: this.createTerrainColorTexture(sourceArea)
+    };
+  }
+
+  private cachedElevationSampleFunction(sourceArea: Extent): SanmplingFunction | null {
+    if (!this.sampler) {
       return null;
     }
 
     const size = this.config.colorTextureResolution;
+    const samples = new Float64Array(size * size);
 
-    const normals = computeNormals(this.cachedElevationSampleFunction, {
-      extent: this.config.sourceArea,
-      width: size,
-      height: size
-    });
+    const { xmin, ymin, width, height } = sourceArea;
 
-    return new MeshTexture({ data: new ImageData(normals, size, size) });
+    let py = ymin;
+    let ptr = 0;
+
+    const dx = width / size;
+    const dy = height / size;
+
+    for (let y = 0; y < size; y++) {
+      let px = xmin;
+
+      for (let x = 0; x < size; x++) {
+        samples[ptr++] = this.sampler.sampler.elevationAt(px, py);
+        px += dx;
+      }
+
+      py += dy;
+    }
+
+    return (px, py, pdx, pdy): number => {
+      const x = Math.min(Math.max(px + pdx, 0), size - 1);
+      const y = Math.min(Math.max(py + pdy, 0), size - 1);
+      return samples[y * size + x];
+    };
   }
 
   private updateMeshVisualization({ visualizationParams, graphic }: UpdateMeshVisualizationParams): void {
@@ -542,7 +457,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
   private setTerrainVisualization(params: TerrainVisualizationParams): void {
     const { mesh, colorTexture: texture } = params;
-
     if (!mesh || !texture) {
       return;
     }
@@ -554,17 +468,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     }
 
     switch (params.shadingMode) {
-      case "normals":
-        if (!params.normalTexture) {
-          return;
-        }
-
-        material.colorTexture = texture;
-        material.emissiveTexture = null!;
-        material.emissiveColor = null!;
-        material.color = null!;
-        material.normalTexture = params.normalTexture;
-        break;
       case "none":
         material.colorTexture = texture;
         material.emissiveTexture = null!;
@@ -582,6 +485,15 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     }
   }
 
+  private terrainSurfaceVertexResolution(sourceArea: Extent): TerrainSurfaceVertexResolution {
+    const { elevationMeshResolutionPixels } = this.config;
+    const demResolution = Math.max(sourceArea.width, sourceArea.height) / elevationMeshResolutionPixels;
+    const width = Math.ceil(sourceArea.width / demResolution);
+    const height = Math.ceil(sourceArea.height / demResolution);
+
+    return { width, height, demResolution };
+  }
+
   private recreateSurfaceBoxMesh({
     zmin,
     zmax,
@@ -591,12 +503,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     displayArea,
     sampler
   }: RecreateSurfaceBoxMeshParams): void {
-    if (this.surfaceBoxGraphic) {
-      this.layer.remove(this.surfaceBoxGraphic);
-      this.surfaceBoxGraphic.destroy();
-      this.surfaceBoxGraphic = null;
-    }
-
     if (!sampler || !Number.isFinite(zmin)) {
       return;
     }
@@ -659,11 +565,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     topSurfaceSampler,
     waterSurfaceResolution
   }: RecreateTopSurfaceParams): void {
-    if (this.topSurfaceGraphic) {
-      this.layer.remove(this.topSurfaceGraphic);
-      this.topSurfaceGraphic = null;
-    }
-
     if (!topSurfaceSampler) {
       return;
     }
@@ -706,55 +607,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     this.layer.add(this.topSurfaceGraphic);
   }
 
-  private recreateGlassTopSurface({
-    displayArea,
-    topSurfaceSampler,
-    glassGradientImageData
-  }: RecreateTopSurfaceParams): void {
-    if (this.topSurfaceGraphic) {
-      this.layer.remove(this.topSurfaceGraphic);
-      this.topSurfaceGraphic = null;
-    }
-
-    if (!topSurfaceSampler) {
-      return;
-    }
-
-    const { width, height } = displayArea;
-
-    const top = displayArea.center.clone();
-    top.z = topSurfaceSampler(top.x, top.y) - 0.5;
-
-    const mesh = Mesh.createPlane(top, {
-      size: { width, height },
-      geographic: false,
-      material: new MeshMaterialMetallicRoughness({
-        colorTexture: new MeshTexture({ data: glassGradientImageData, transparent: true }),
-        emissiveColor: [100, 100, 100],
-        alphaMode: "blend",
-        roughness: 1,
-        metallic: 0
-      })
-    });
-
-    this.topSurfaceGraphic = new Graphic({
-      geometry: mesh,
-      symbol: new MeshSymbol3D({
-        symbolLayers: [
-          new FillSymbol3DLayer({
-            material: { color: "white" },
-            edges: new SolidEdges3D({
-              size: "1px",
-              color: [255, 255, 255, 0.8]
-            })
-          })
-        ]
-      })
-    });
-
-    this.layer.add(this.topSurfaceGraphic);
-  }
-
   private recreateGlassBox({
     sourceArea,
     displayArea,
@@ -763,11 +615,6 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
     glassGradientImageData,
     terrainSurfaceVertexResolution
   }: RecreateGlassBoxParams): void {
-    if (this.glassBoxGraphic) {
-      this.layer.remove(this.glassBoxGraphic);
-      this.glassBoxGraphic = null;
-    }
-
     if (!sampler || !topSurfaceSampler) {
       return;
     }
@@ -836,9 +683,11 @@ export interface ConstructProperties {
   config: Configuration;
 }
 
-type RecreateSamplerParams = Pick<Configuration, "sourceArea" | "samplingResolutionPixels">;
+type RecreateSamplerParams = { sourceArea: Extent; samplingResolutionPixels: number };
 
-interface RecreateElevationMeshParams extends Pick<Configuration, "sourceArea" | "displayArea"> {
+interface RecreateElevationMeshParams {
+  sourceArea: Extent;
+  displayArea: Extent;
   sampler: ExaggeratedElevationSampler | null;
   terrainSurfaceVertexResolution: TerrainSurfaceVertexResolution;
 }
@@ -848,28 +697,22 @@ interface UpdateMeshVisualizationParams {
   graphic: Graphic | null;
 }
 
-interface TerrainVisualizationNormalsParams {
-  shadingMode: "normals";
-  mesh: Mesh | null;
-  colorTexture: MeshTexture | null;
-  normalTexture: MeshTexture | null;
-}
-
-interface TerrainVisualizationColorParams {
-  shadingMode: Exclude<ShadingMode, "normals">;
+interface TerrainVisualizationParams {
+  shadingMode: ShadingMode;
   mesh: Mesh | null;
   colorTexture: MeshTexture | null;
 }
 
-interface RecreateSurfaceBoxMeshParams
-  extends Pick<Configuration, "surfacePaddingBottom" | "sourceArea" | "displayArea"> {
+interface RecreateSurfaceBoxMeshParams extends Pick<Configuration, "surfacePaddingBottom" | "displayArea"> {
+  sourceArea: Extent;
   zmin: number;
   zmax: number;
   sampler: ExaggeratedElevationSampler | null;
   terrainSurfaceVertexResolution: TerrainSurfaceVertexResolution;
 }
 
-interface RecreateGlassBoxParams extends Pick<Configuration, "displayArea" | "sourceArea" | "glassTextureResolution"> {
+interface RecreateGlassBoxParams extends Pick<Configuration, "displayArea" | "glassTextureResolution"> {
+  sourceArea: Extent;
   topSurfaceSampler: TopSurfaceSampler | null;
   terrainSurfaceVertexResolution: TerrainSurfaceVertexResolution;
   sampler: ExaggeratedElevationSampler | null;
@@ -887,5 +730,4 @@ interface TerrainSurfaceVertexResolution {
   demResolution: number;
 }
 
-type TerrainVisualizationParams = TerrainVisualizationNormalsParams | TerrainVisualizationColorParams;
 type TopSurfaceSampler = (x: number, y: number) => number;

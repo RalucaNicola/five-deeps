@@ -7,15 +7,6 @@ import { makeGradientSampler } from "./gradient";
 @subclass("Configuration")
 export class Configuration extends Accessor {
   @property()
-  sourceArea = new Extent({
-    xmin: 15727788.150199998,
-    ymin: 1135244.2035999997,
-    xmax: 16025485.127200002,
-    ymax: 1417430.0626000003,
-    spatialReference: SpatialReference.WebMercator
-  });
-
-  @property()
   displayArea = new Extent({
     xmin: 0,
     xmax: 100,
@@ -25,11 +16,6 @@ export class Configuration extends Accessor {
     zmax: 50,
     spatialReference: SpatialReference.WebMercator
   });
-
-  @property()
-  get areaScale(): number {
-    return this.displayArea.width / this.sourceArea.width;
-  }
 
   @property()
   samplingResolutionPixels = 512;
@@ -74,4 +60,4 @@ export class Configuration extends Accessor {
   ];
 }
 
-export type ShadingMode = "none" | "normals" | "hillshade" | "multi-hillshade";
+export type ShadingMode = "none" | "hillshade" | "multi-hillshade";

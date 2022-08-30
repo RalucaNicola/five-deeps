@@ -165,7 +165,7 @@ export class App extends Widget {
           }),
         ]
       }),
-      layers: [this.cloudsLayer, this.highlightGraphicsLayer]
+      layers: [this.highlightGraphicsLayer, this.cloudsLayer]
     }),
     ui: { components: [] },
     qualityProfile: "high"
@@ -378,7 +378,6 @@ export class App extends Widget {
     this.highlightGraphicsLayer.add(graphic);
     let increment = 0.1;
     const animateOpacity = (opacity: number) => {
-      console.log(opacity);
       this.highlightGraphicsLayer.opacity = Math.max(Math.min(opacity, 1), 0);
       if (opacity > 1) {
         window.setTimeout(() => {
@@ -390,7 +389,6 @@ export class App extends Widget {
       }
     }
     animateOpacity(0);
-
   }
 
   private goTo(evt: PointerEvent): void {
@@ -419,6 +417,7 @@ export class App extends Widget {
 
   private showGlobe(): void {
     this.elements.dioramaViewer.classList.remove("fade-in");
+    this.dioramaBuilder.destroyDiorama();
     this.elements.selectViewer.classList.add("fade-in");
     this.elements.appTitle.style.display = "revert";
     this.highlightedPoint = null;
@@ -427,7 +426,7 @@ export class App extends Widget {
 
   private showDiorama(extent: Extent): void {
     this.view.camera = this.initialCamera;
-    this.config.sourceArea = extent;
+    this.dioramaBuilder.generateDiorama(extent);
     this.stopGlobeAnimation();
     this.elements.dioramaViewer.classList.add("fade-in");
     this.elements.selectViewer.classList.remove("fade-in");
