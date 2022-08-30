@@ -34,6 +34,8 @@ import { IconSymbol3DLayer, PointSymbol3D } from "@arcgis/core/symbols";
 import Graphic from "@arcgis/core/Graphic";
 
 import { extents } from './extents';
+import Home from "@arcgis/core/widgets/Home";
+import Viewpoint from "@arcgis/core/Viewpoint";
 
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
@@ -58,15 +60,8 @@ export class App extends Widget {
       ground: {
         opacity: 0,
         surfaceColor: [100, 100, 50]
-      },
-      layers: [
-        new GraphicsLayer({
-          fullExtent: this.config.displayArea
-        })
-      ]
+      }
     }),
-
-    ui: { components: [] },
 
     camera: this.initialCamera,
 
@@ -268,6 +263,14 @@ export class App extends Widget {
           this.cloudsLayer.opacity = 0.02 * Math.pow(value - 10, 2);
         }
       });
+
+    const homeWidget = new Home({
+      view: this.view,
+      viewpoint: new Viewpoint({ camera: this.initialCamera })
+    });
+
+    this.view.ui.add(homeWidget, "top-left");
+    (this.view as any).basemapTerrain.suspended = true;
   }
 
   private animationFrameTask: __esri.FrameTaskHandle | null = null;
