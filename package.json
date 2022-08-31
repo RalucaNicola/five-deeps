@@ -1,8 +1,11 @@
 {
-  "name": "diarama",
+  "name": "five-deeps",
   "version": "1.0.0",
   "description": "",
-  "author": "Jesse van den Kieboom",
+  "authors": [
+    "Jesse van den Kieboom",
+    "Raluca Nicola"
+  ],
   "scripts": {
     "start": "vite",
     "dev": "vite",

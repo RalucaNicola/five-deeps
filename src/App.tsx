@@ -352,7 +352,7 @@ export class App extends Widget {
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
         </div>
-        <div class="about"> Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
+        <div class="about"> Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://experience.arcgis.com/experience/b0d24697de5e4036aedc517c02a04454/" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
         </div>
