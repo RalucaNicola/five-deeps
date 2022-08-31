@@ -28,6 +28,7 @@ import WaterSymbol3DLayer from "@arcgis/core/symbols/WaterSymbol3DLayer";
 import caustics from "./images/caustics.png";
 import Extent from "@arcgis/core/geometry/Extent";
 import { textChangeRangeIsUnchanged } from "typescript";
+import { when } from "@arcgis/core/core/reactiveUtils";
 
 @subclass("DioramaBuilder")
 export class DioramaBuilder extends Accessor implements ConstructProperties {
@@ -225,6 +226,14 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
   protected initialize(): void {
     this.view.map.add(this.layer);
+    // hack to suspend tile updates
+    when(
+      () => !this.view.updating,
+      () => {
+        (this.view as any).basemapTerrain.suspended = true;
+      },
+      { once: true }
+    );
   }
 
   private async recreateSampler(
