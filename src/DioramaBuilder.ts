@@ -135,6 +135,8 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
 
   private causticsImage: HTMLImageElement;
 
+  public loading: HTMLDivElement | null = null;
+
   constructor(props: ConstructProperties) {
     super(props);
     this.causticsImage = new Image();
@@ -165,6 +167,9 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
   }
 
   generateDiorama(sourceArea: Extent): void {
+    if (this.loading) {
+      this.loading.style.display = "flex";
+    }
     const wrapUpdating = <T>(promise: Promise<T>): Promise<T> => {
       this.numUpdating++;
       promise.finally(() => this.numUpdating--);
@@ -220,6 +225,9 @@ export class DioramaBuilder extends Accessor implements ConstructProperties {
           waterSurfaceResolution: this.config.waterSurfaceResolution,
           glassGradientImageData: this.glassGradientImageData
         });
+        if (this.loading) {
+          this.loading.style.display = "none";
+        }
       });
     });
   }

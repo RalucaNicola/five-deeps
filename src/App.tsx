@@ -214,6 +214,9 @@ export class App extends Widget {
     when(
       () => !this.selectView.updating,
       () => {
+        if (this.elements.loading) {
+          this.elements.loading.style.display = "none";
+        }
         this.startGlobeAnimation();
 
         this.selectView.on('pointer-move', (event) => {
@@ -313,7 +316,8 @@ export class App extends Widget {
     dioramaViewer: null! as HTMLDivElement,
     intro: null! as HTMLDivElement,
     overlayInfo: null! as HTMLDivElement,
-    appTitle: null! as HTMLTitleElement
+    appTitle: null! as HTMLTitleElement,
+    loading: null! as HTMLDivElement
   };
 
   render() {
@@ -352,7 +356,9 @@ export class App extends Widget {
             <div id="selectAreaDiv" afterCreate={(node: HTMLDivElement) => this.onAfterCreateSelectArea(node)}></div>
           </div>
         </div>
+
         <div class="about"> Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://experience.arcgis.com/experience/b0d24697de5e4036aedc517c02a04454/" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
+        <div id="loading" afterCreate={(node: HTMLDivElement) => { this.elements.loading = node; this.dioramaBuilder.loading = node; }}><div></div></div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
         </div>
@@ -444,7 +450,6 @@ export class App extends Widget {
   private onAfterCreateSelectArea(element: HTMLDivElement): void {
     this.selectView.container = element;
     (window as any).selectView = this.selectView;
-
   }
 }
 
