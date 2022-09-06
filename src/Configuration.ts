@@ -71,8 +71,8 @@ export class Configuration extends Accessor {
 
   @property()
   waterSurfaceNoiseHarmonics = [
-    { waveLength: 0.87, amplitude: 10 },
-    { waveLength: 6, amplitude: 0.6 }
+    { waveLength: 0.87, amplitude: 5 },
+    { waveLength: 3, amplitude: 0.6 }
   ];
 }
 

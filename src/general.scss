@@ -61,7 +61,7 @@ html,
   bottom: 10px;
   right: 10px;
   color: rgba(255, 255, 255, 0.8);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
 
   a {
     color: rgba(255, 255, 255, 1);
@@ -150,20 +150,20 @@ html,
 
 .close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 20px;
+  right: 20px;
   border: 0;
   padding: 6px;
   background-color: transparent;
-  width: 30px;
-  height: 30px;
+  width: 40px;
+  height: 40px;
   transition: all 200ms linear;
   pointer-events: all;
 
   &:hover {
     cursor: pointer;
-    width: 40px;
-    height: 40px;
+    width: 45px;
+    height: 45px;
   }
 }
 

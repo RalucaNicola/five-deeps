@@ -33,9 +33,12 @@ import { SimpleRenderer } from "@arcgis/core/renderers";
 import { IconSymbol3DLayer, PointSymbol3D } from "@arcgis/core/symbols";
 import Graphic from "@arcgis/core/Graphic";
 
-import { viewpoints } from './viewpoints';
+import { points } from './points';
 import Home from "@arcgis/core/widgets/Home";
 import Viewpoint from "@arcgis/core/Viewpoint";
+import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
+import { Point } from "@arcgis/core/geometry";
+import { resolveConfig } from "vite";
 
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
@@ -82,8 +85,42 @@ export class App extends Widget {
     viewingMode: "local"
   });
 
-  private pointsLayer = new GeoJSONLayer({
-    url: "./data/points.geojson",
+  private getGraphics(points: Object) {
+    const graphics = [];
+    let id = 0;
+    for (const [key, value] of Object.entries(points)) {
+      graphics.push({ attributes: { ...value.properties, ObjectID: id }, geometry: new Point({ x: value.geometry.coordinates[0], y: value.geometry.coordinates[1], spatialReference: { wkid: 4326 } }) });
+      id++;
+    }
+    console.log(graphics);
+    return graphics;
+  }
+
+  private pointsLayer = new FeatureLayer({
+    source: this.getGraphics(points),
+    geometryType: "point",
+    spatialReference: { wkid: 4326 },
+    fields: [
+      {
+        name: "ObjectID",
+        type: "oid"
+      }, {
+        name: "name",
+        type: "string"
+      }, {
+        name: "depth",
+        type: "integer"
+      }, {
+        name: "ocean",
+        type: "string"
+      }, {
+        name: "description",
+        type: "string"
+      }, {
+        name: "year",
+        type: "integer"
+      }],
+    objectIdField: "ObjectID",
     outFields: ["*"],
     renderer: new SimpleRenderer({
       symbol: new PointSymbol3D({
@@ -248,12 +285,7 @@ export class App extends Widget {
             const results = hitTestResult.results;
             if (results && results.length > 0) {
               const graphic = (results[0] as GraphicHit).graphic;
-              const extent = new Extent(viewpoints[graphic.attributes.name].extent);
-              this.highlightedPoint = graphic.attributes;
-              this.showDiorama(extent);
-              this.view.goTo(viewpoints[graphic.attributes.name].camera);
-              this.selected = true;
-              this.elements.overlayInfo.classList.add('fade-in');
+              this.selectGraphic(graphic);
             }
           }).catch(console.error);
         })
@@ -274,6 +306,15 @@ export class App extends Widget {
     });
 
     this.view.ui.add(homeWidget, "top-left");
+  }
+
+  private selectGraphic(graphic: Graphic) {
+    const extent = new Extent(points[graphic.attributes.name].extent);
+    this.highlightedPoint = graphic.attributes;
+    this.showDiorama(extent);
+    this.view.goTo(points[graphic.attributes.name].camera);
+    this.selected = true;
+    this.elements.overlayInfo.classList.add('fade-in');
   }
 
   private animationFrameTask: __esri.FrameTaskHandle | null = null;
@@ -357,7 +398,7 @@ export class App extends Widget {
           </div>
         </div>
 
-        <div class="about"> Inspired by The Five deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://experience.arcgis.com/experience/b0d24697de5e4036aedc517c02a04454/" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
+        <div class="about"> Inspired by The Five Deeps <a href="https://www.youtube.com/watch?v=tn4GJyuKBN8&ab_channel=Esri" target="_blank">video</a> and <a href="https://experience.arcgis.com/experience/b0d24697de5e4036aedc517c02a04454/" target="_blank">map</a> | Powered by <a href="https://www.esri.com/en-us/home" target="blank">Esri</a>'s <a href="https://developers.arcgis.com/javascript/latest/" target="_blank">ArcGIS API for JavaScript</a> | <a href="https://www.arcgis.com/home/item.html?id=0c69ba5a5d254118841d43f03aa3e97d" target="_blank">TopoBathy 3D elevation layer</a>.</div>
         <div id="loading" afterCreate={(node: HTMLDivElement) => { this.elements.loading = node; this.dioramaBuilder.loading = node; }}><div></div></div>
         <div class="overlay-info" afterCreate={(node: HTMLDivElement) => (this.elements.overlayInfo = node)}>
           {overlayInfoContainer}
@@ -383,37 +424,51 @@ export class App extends Widget {
   }
 
   private animateGraphicOpacity(graphic: Graphic) {
-    this.highlightGraphicsLayer.opacity = 0;
-    this.highlightGraphicsLayer.add(graphic);
-    let increment = 0.1;
-    const animateOpacity = (opacity: number) => {
-      this.highlightGraphicsLayer.opacity = Math.max(Math.min(opacity, 1), 0);
-      if (opacity > 1) {
-        window.setTimeout(() => {
-          increment = -0.1;
-        }, 100);
+    return new Promise((resolve, reject) => {
+      this.highlightGraphicsLayer.opacity = 0;
+      this.highlightGraphicsLayer.add(graphic);
+      let increment = 0.1;
+      const animateOpacity = (opacity: number) => {
+        this.highlightGraphicsLayer.opacity = Math.max(Math.min(opacity, 1), 0);
+        if (opacity > 1) {
+          window.setTimeout(() => {
+            increment = -0.1;
+          }, 100);
+        }
+        if (opacity >= 0) {
+          requestAnimationFrame(() => { animateOpacity(opacity + increment) });
+        } else {
+          resolve("animation finished");
+        }
       }
-      if (opacity >= 0) {
-        requestAnimationFrame(() => { animateOpacity(opacity + increment) });
-      }
-    }
-    animateOpacity(0);
+      animateOpacity(0);
+    });
   }
 
   private goTo(evt: PointerEvent): void {
     if (evt.target && evt.target instanceof HTMLButtonElement) {
       const name = evt.target.innerHTML;
-      this.pointsLayer.queryFeatures({ where: `name='${name}'`, returnGeometry: true })
-        .then(result => {
-          if (this.animationFrameTask) {
-            this.stopGlobeAnimation();
-          }
-          this.selectView.goTo({ target: result.features[0].geometry, zoom: 4 })
-            .then(() => {
-              this.highlightGraphic.geometry = result.features[0].geometry;
-              this.animateGraphicOpacity(this.highlightGraphic);
-            })
-        });
+      const point = points[name];
+      if (point) {
+        if (this.animationFrameTask) {
+          this.stopGlobeAnimation();
+        }
+        const target = new Point({
+          x: point.geometry.coordinates[0],
+          y: point.geometry.coordinates[1],
+          spatialReference: { wkid: 4326 }
+        })
+        this.selectView.goTo({ target, zoom: 4 }, { speedFactor: 0.6 })
+          .then(() => {
+            this.highlightGraphic.geometry = target;
+            this.animateGraphicOpacity(this.highlightGraphic)
+              .then(() => {
+                this.selectGraphic(new Graphic({ attributes: point.properties, geometry: target }));
+              })
+          })
+      }
+
+
     }
 
   }
@@ -467,4 +522,11 @@ interface OceanPoint {
 
 interface GraphicHit {
   graphic: Graphic;
+}
+
+interface PointProperties {
+  extent: Extent,
+  camera: Camera,
+  properties: OceanPoint,
+  geometry: Point
 }
