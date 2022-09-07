@@ -25,7 +25,6 @@ import ElevationLayer from "@arcgis/core/layers/ElevationLayer";
 import Ground from "@arcgis/core/Ground";
 import Basemap from "@arcgis/core/Basemap";
 import TileLayer from "@arcgis/core/layers/TileLayer";
-import GeoJSONLayer from "@arcgis/core/layers/GeoJSONLayer";
 import LabelClass from "@arcgis/core/layers/support/LabelClass";
 import LabelSymbol3D from "@arcgis/core/symbols/LabelSymbol3D";
 import TextSymbol3DLayer from "@arcgis/core/symbols/TextSymbol3DLayer";
@@ -39,7 +38,6 @@ import Home from "@arcgis/core/widgets/Home";
 import Viewpoint from "@arcgis/core/Viewpoint";
 import FeatureLayer from "@arcgis/core/layers/FeatureLayer";
 import { Point } from "@arcgis/core/geometry";
-import { resolveConfig } from "vite";
 
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
