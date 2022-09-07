@@ -53,15 +53,8 @@ export class ExaggeratedElevationSampler extends Accessor implements __esri.Elev
   }
 
   initialize(): void {
-    let zmin = Number.POSITIVE_INFINITY;
-    let zmax = Number.NEGATIVE_INFINITY;
-
-    for (const sampler of (this.sampler as any).samplers) {
-      for (const value of sampler.tile.samplerData.pixelData) {
-        zmin = Math.min(zmin, value);
-        zmax = Math.max(zmax, value);
-      }
-    }
+    let zmin = this.sampler.extent.zmin;
+    let zmax = this.sampler.extent.zmax;
 
     this.sourceZmin = zmin;
     this.sourceZmax = zmax;
