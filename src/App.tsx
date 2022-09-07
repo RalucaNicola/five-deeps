@@ -32,6 +32,7 @@ import TextSymbol3DLayer from "@arcgis/core/symbols/TextSymbol3DLayer";
 import { SimpleRenderer } from "@arcgis/core/renderers";
 import { IconSymbol3DLayer, PointSymbol3D } from "@arcgis/core/symbols";
 import Graphic from "@arcgis/core/Graphic";
+import * as externalRenderers from "@arcgis/core/views/3d/externalRenderers";
 
 import { points } from './points';
 import Home from "@arcgis/core/widgets/Home";
@@ -43,7 +44,7 @@ import { resolveConfig } from "vite";
 setAssetPath("https://js.arcgis.com/calcite-components/1.0.0-beta.80/assets");
 
 const color = [255, 255, 255];
-
+externalRenderers.forceWebGLContext(1);
 @subclass("App")
 export class App extends Widget {
   private config = new Configuration();
