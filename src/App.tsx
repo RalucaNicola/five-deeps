@@ -91,7 +91,6 @@ export class App extends Widget {
       graphics.push({ attributes: { ...value.properties, ObjectID: id }, geometry: new Point({ x: value.geometry.coordinates[0], y: value.geometry.coordinates[1], spatialReference: { wkid: 4326 } }) });
       id++;
     }
-    console.log(graphics);
     return graphics;
   }
 
